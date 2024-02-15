@@ -45,11 +45,12 @@ int main()
     FILE *fd = fopen("fib.txt", "r");
 
     overture_init();
-    overture_parse(fd);
-    overture_print();
+    int ret = overture_parse(fd);
+    fclose(fd);
+
+
     overture_free();
     overture_quit();
 
-    fclose(fd);
-    return 0;
+    return ret;
 }

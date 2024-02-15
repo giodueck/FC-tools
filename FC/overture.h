@@ -1,6 +1,8 @@
 #ifndef FC_OVERTURE_H
 #define FC_OVERTURE_H
 
+#define DEBUG
+
 #include <stdint.h>
 #include <stdio.h>
 
@@ -34,5 +36,8 @@ void overture_init();
 
 // Frees the used regular expressions
 void overture_quit();
+
+// Runs the parsed program if it has no errors
+int overture_run();
 
 #endif // FC_OVERTURE_H
