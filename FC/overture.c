@@ -8,19 +8,40 @@
 #include "overture.h"
 #include "program.h"
 
-static overture_register_map_t registers = { 0 };
 static program_t program = { 0 };
 static char *program_buf = NULL;
 
-enum overture_line_type { OV_EMPTY, OV_LABEL, OV_IMM, OV_REG, OV_INS, OV_LABEL_IMM };
-
 static regex_t label            = { 0 };
 static regex_t immediate        = { 0 };
+
+enum machine_code_def {
+ADD = 64,
+SUB = 65,
+MUL = 66,
+DIV = 67,
+AND = 68,
+ORR = 69,
+NOT = 70,
+XOR = 71,
+NOP = 192,
+JEQ = 193,
+JLT = 194,
+JLE = 195,
+JMP = 196,
+JNE = 197,
+JGE = 198,
+JGT = 199,
+};
 
 static int code_len = 0;
 static int *code = NULL;
 static int error_count = 0;
 
+static overture_register_map_t reg = { 0 };
+static int control_at = -1;
+static int cycle = -1;
+static int end_instruction = -1;
+static int *breakpoints = NULL;
 
 // Note: This function returns a pointer to a substring of the original string.
 // If the given string was allocated dynamically, the caller must not overwrite
@@ -90,51 +111,51 @@ static int parse_instruction(const char *ins)
         case 'a':
             // add, and
             if (!strcmp(tok, "add"))
-                return 64;
+                return ADD;
             if (!strcmp(tok, "and"))
-                return 68;
+                return AND;
             return -1;
         case 'd':
             if (!strcmp(tok, "div"))
-                return 67;
+                return DIV;
             return -1;
         case 'j':
             if (!strcmp(tok, "jeq"))
-                return 193;
+                return JEQ;
             if (!strcmp(tok, "jlt"))
-                return 194;
+                return JLT;
             if (!strcmp(tok, "jle"))
-                return 195;
+                return JLE;
             if (!strcmp(tok, "jmp"))
-                return 196;
+                return JMP;
             if (!strcmp(tok, "jne"))
-                return 197;
+                return JNE;
             if (!strcmp(tok, "jge"))
-                return 198;
+                return JGE;
             if (!strcmp(tok, "jgt"))
-                return 199;
+                return JGT;
             return -1;
         case 'm':
             if (!strcmp(tok, "mul"))
-                return 66;
+                return MUL;
             return -1;
         case 'n':
             if (!strcmp(tok, "nop"))
-                return 192;
+                return NOP;
             if (!strcmp(tok, "not"))
-                return 70;
+                return NOT;
             return -1;
         case 'o':
             if (!strcmp(tok, "orr"))
-                return 69;
+                return ORR;
             return -1;
         case 's':
             if (!strcmp(tok, "sub"))
-                return 65;
+                return SUB;
             return -1;
         case 'x':
             if (!strcmp(tok, "xor"))
-                return 71;
+                return XOR;
             return -1;
 
         default:
@@ -326,18 +347,17 @@ void overture_free()
     free(code);
 }
 
-// Interpret and execute an instruction
-int overture_execute(const char *instr)
+// Returns the current state of the registers
+overture_register_map_t overture_get_registers()
 {
-
-    return 0;
+    return reg;
 }
 
-// Returns the current state of the registers
-overture_register_map_t overture_get_registers();
-
 // Sets the registers, useful for debugging
-void overture_set_registers(overture_register_map_t reg_map);
+void overture_set_registers(overture_register_map_t reg_map)
+{
+    reg = reg_map;
+}
 
 // Prints all executable lines
 void overture_print()
@@ -364,4 +384,147 @@ void overture_quit()
 {
     regfree(&label);
     regfree(&immediate);
+}
+
+// Used to tell the program where to halt. If not used, the program will run forever
+// If a negative value is given, the label "end" will be set as the end if it exists
+// On success, returns the code word address for the given line, otherwise returns -1
+int overture_set_end(int line)
+{
+    end_instruction = -1;
+
+    // Look for the label "end"
+    if (line < 0)
+    {
+        for (int i = 0; i < program.len_symbols; i++)
+        {
+            if (!strcmp(program.symbols[i].name, "end"))
+            {
+                end_instruction = program.symbols[i].value;
+                return end_instruction;
+            }
+        }
+    }
+
+    // If the line if after the last instruction, that's an error
+    if (line > program.len_lines)
+        return -1;
+
+    // Look for the code word for the given line
+    for (int i = 0; i < line; i++)
+    {
+        end_instruction += program.line_executable[i];
+    }
+    return end_instruction;
+}
+
+// Execute one instruction on the registers
+static void overture_execute(int op, int *jump_addr)
+{
+    if (op < 0 || op > 255)
+        return;
+    if (op < 64)
+    {
+        reg.r0 = op;
+        return;
+    }
+
+    switch (op)
+    {
+    case ADD:
+        reg.r3 = reg.r1 + reg.r2;
+        break;
+    case SUB:
+        reg.r3 = reg.r1 - reg.r2;
+        break;
+    case MUL:
+        reg.r3 = reg.r1 * reg.r2;
+        break;
+    case DIV:
+        if (reg.r2 == 0) reg.r3 = 0;
+        else reg.r3 = reg.r1 / reg.r2;
+        break;
+    case AND:
+        reg.r3 = reg.r1 & reg.r2;
+        break;
+    case ORR:
+        reg.r3 = reg.r1 | reg.r2;
+        break;
+    case NOT:
+        reg.r3 = ~reg.r1;
+        break;
+    case XOR:
+        reg.r3 = reg.r1 ^ reg.r2;
+        break;
+    case NOP:
+        break;
+    case JEQ:
+        if (reg.r3 == 0)
+            *jump_addr = reg.r0;
+        break;
+    case JLT:
+        if (reg.r3 < 0)
+            *jump_addr = reg.r0;
+        break;
+    case JLE:
+        if (reg.r3 <= 0)
+            *jump_addr = reg.r0;
+        break;
+    case JMP:
+        *jump_addr = reg.r0;
+        break;
+    case JNE:
+        if (reg.r3 != 0)
+            *jump_addr = reg.r0;
+        break;
+    case JGE:
+        if (reg.r3 >= 0)
+            *jump_addr = reg.r0;
+        break;
+    case JGT:
+        if (reg.r3 > 0)
+            *jump_addr = reg.r0;
+        break;
+    default:
+        if ((op >> 6) == 2)
+        {
+            uint32_t rnull = 0;
+            uint32_t *regarray[8] = { &reg.r0, &reg.r1, &reg.r2, &reg.r3, &reg.r4, &reg.r5, &rnull, &rnull };
+
+            *regarray[op & 7] = *regarray[(op >> 3) & 7];
+        }
+        break;
+    }
+}
+
+// Runs the parsed program if it has no errors
+// Command determines how far the program is allowed to run before it stops
+int overture_run(int command)
+{
+    if (error_count != 0)
+        return -1;
+
+    switch (command)
+    {
+        case RUN:
+            control_at = 0;
+            while (control_at < code_len)
+            {
+                if (control_at == end_instruction)
+                    break;
+                int j = -1;
+                overture_execute(code[control_at], &j);
+                if (j >= 0)
+                    control_at = j;
+                else
+                    control_at++;
+                cycle++;
+            }
+            return 0;
+        case STEP:
+        case STEP_INTO:
+        case CONTINUE:
+        default:
+            return -1;
+    }
 }

@@ -16,4 +16,10 @@ typedef struct {
     int *line_executable;
 } program_t;
 
+// Move into dedicated debugger header when that exists
+enum db_command { RUN, STEP, STEP_INTO, CONTINUE, BREAKPOINT, DELETE_BREAKPOINT };
+
+// Move into dedicated debugger header when that exists
+enum db_break_type { BP_NORMAL, BP_END };
+
 #endif // FC_PROGRAM_H
