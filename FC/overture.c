@@ -169,7 +169,28 @@ int overture_parse(FILE *fd)
     printf("\n");
 
     // Second pass: replace labels with immediates
-    // TODO:
+    i = 0;
+    for (int ci = 0; ci < code_len; ci++, i++)
+    {
+        while (!program.line_executable[i])
+            i++;
+
+        for (int j = 0; j < program.len_symbols; j++)
+        {
+            if (strcmp(program.symbols[j].name, program.lines[i]) == 0)
+            {
+                code[ci] = program.symbols[j].value;
+                break;
+            }
+        }
+    }
+
+    printf("## Second Pass ##\n");
+    for (int i = 0; i < code_len; i++)
+    {
+        printf("%hhu ", code[i]);
+    }
+    printf("\n\n");
 
     return 0;
 }
