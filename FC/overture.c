@@ -97,10 +97,14 @@ int overture_parse(FILE *fd)
 
     free(buf);
 
-    // Parse empty lines, labels, immediates and instructions
-    // int code_space = 1000;
-    // code = malloc(sizeof(uint8_t) * code_space);
+    // First Pass: Parse empty lines, labels, immediates, instructions
+    int code_space = 1000;
+    code = malloc(sizeof(uint8_t) * code_space);
     code_len = 0;
+
+    int symbol_space = 1000;
+    program.symbols = malloc(sizeof(symbol_t) * symbol_space);
+    program.len_symbols = 0;
 
     program.line_executable = malloc(sizeof(int) * program.len_lines);
     for (int i = 0; i < program.len_lines; i++)
@@ -111,18 +115,61 @@ int overture_parse(FILE *fd)
             continue;
         }
         program.line_executable[i] = 1;
-        code_len++;
+
+        if (code_len >= code_space)
+        {
+            code_space += 1000;
+            code = realloc(code, sizeof(uint8_t) * code_space);
+        }
 
         regmatch_t match = { 0 };
         int r;
         if ((r = regexec(&immediate, program.lines[i], 0, &match, 0)) == 0)
         {
+            // Copy value directly as code
+            code[code_len++] = atoi(program.lines[i]);
+            continue;
         } else if ((r = regexec(&label, program.lines[i], 0, &match, 0)) == 0)
         {
-            code_len--;
+            if (program.len_symbols >= symbol_space)
+            {
+                symbol_space += 1000;
+                program.symbols = realloc(program.symbols, sizeof(symbol_t) * symbol_space);
+            }
+
+            // Copy symbol to symbols array
+            program.symbols[program.len_symbols].name = malloc(sizeof(char) * (strlen(program.lines[i]) + 1));
+
+            program.symbols[program.len_symbols].value = code_len;
+
+            strcpy(program.symbols[program.len_symbols].name, program.lines[i]);
+            program.symbols[program.len_symbols].name[strlen(program.lines[i]) - 1] = '\0';
+            program.len_symbols++;
+
+            continue;
+        } else
+        {
+            // TODO: instructions
+            code[code_len++] = 0;
+            continue;
         }
     }
+
+    printf("## First Pass ##\n");
     printf("Code size: %d\n", code_len);
+    for (int i = 0; i < code_len; i++)
+    {
+        printf("%hhu ", code[i]);
+    }
+    printf("\n");
+    for (int i = 0; i < program.len_symbols; i++)
+    {
+        printf("%s: %u\n", program.symbols[i].name, program.symbols[i].value);
+    }
+    printf("\n");
+
+    // Second pass: replace labels with immediates
+    // TODO:
 
     return 0;
 }
@@ -139,6 +186,8 @@ void overture_free()
     free(program.lines);
     free(program.line_executable);
     program = (program_t) { 0, NULL, 0, NULL, NULL };
+
+    free(code);
 }
 
 // Interpret and execute an instruction
