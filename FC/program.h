@@ -14,6 +14,8 @@ typedef struct {
     int len_lines;
     char **lines;
     int *line_executable;
+    int len_code;
+    int64_t *code;
 } program_t;
 
 // Move into dedicated debugger header when that exists

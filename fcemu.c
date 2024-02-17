@@ -46,7 +46,7 @@ int main()
     FILE *fd = fopen("fib.txt", "r");
 
     overture_init();
-    int ret = overture_parse(fd);
+    int ret = overture_set_program(fd);
     fclose(fd);
 
     if (ret == 0)
