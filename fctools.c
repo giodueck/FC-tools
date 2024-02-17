@@ -37,6 +37,8 @@ extern const int len_commands;
 extern const char *commands[];
 extern int (*command_functions[])(int, char **);
 extern const char *command_help[];
+extern int command;
+extern int error;
 
 void initialize();
 
@@ -56,7 +58,11 @@ int main(int argc, char **argv)
         for (int i = 0; i < len_commands && ret == ERR_INVALID_COMMAND; i++)
         {
             if (strcmp(argv[1], commands[i]) == 0)
+            {
+                command = i;
                 ret = command_functions[i](argc, argv);
+                break;
+            }
         }
 
         if (ret == ERR_NOT_IMPLEMENTED)
@@ -67,6 +73,7 @@ int main(int argc, char **argv)
 
     if (ret == ERR_INVALID_COMMAND)
     {
+        error = ERR_INVALID_COMMAND;
         help(argc, argv);
     }
 
