@@ -33,12 +33,10 @@
  *      Associate instructions to their line
  */
 
-int help(int argc, char **argv);
-
-const int len_commands = 4;
-const char *commands[] = { "run", "compile", "debug", "help" };
-int (*command_functions[])(int, char **) = { run, compile, debug, help };
-const char *command_help[] = { "Run a program", "Compile a program", "Compile and run or step through the execution", "Print this help menu" };
+extern const int len_commands;
+extern const char *commands[];
+extern int (*command_functions[])(int, char **);
+extern const char *command_help[];
 
 void initialize();
 
@@ -48,29 +46,6 @@ void render();
 
 void simulate();
 
-void print_help(int function)
-{
-    if (function < 0)
-    {
-        printf("Usage: fctools <command> [command options]\n");
-        printf("\nAvailable commands:\n");
-        for (int i = 0; i < len_commands; i++)
-        {
-            printf("    %s\r\t\t%s\n", commands[i], command_help[i]);
-        }
-    }
-}
-
-int help(int argc, char **argv)
-{
-    if (argc < 2 || (argc >= 2 && strcmp(argv[1], "help") == 0))
-        print_help(-1);
-    else if (strcmp(argv[1], "help")) // error with the command
-    {
-        print_help(-1);
-    }
-    return 0;
-}
 
 int main(int argc, char **argv)
 {
