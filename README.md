@@ -13,7 +13,7 @@ Later on, the primary way of running these programs will be with a graphical pro
 will be visible in real time as the program executes.
 
 # Building
-Dependencies:\
+Dependencies:
 - SDL2
 - SDL2_ttf
 
