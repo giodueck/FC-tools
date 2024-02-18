@@ -11,7 +11,7 @@ const int len_commands = 4;
 const char *commands[] = { "run", "compile", "debug", "help" };
 int (*command_functions[])(int, char **) = { run, compile, debug, help };
 
-const char *command_help[] = { "Run a program", "Compile a program", "Compile and run or step through the execution", "Print this help menu" };
+const char *command_help[] = { "Run a program.", "Compile a program.", "Compile and run or step through the execution.", "Print this help menu. Use \"help <command>\" for help on that command." };
 
 void (*command_help_functions[])(void) = { run_help, compile_help, debug_help, help_help };
 
