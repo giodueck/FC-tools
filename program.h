@@ -16,7 +16,13 @@ typedef struct {
     int *line_executable;
     int len_code;
     int64_t *code;
+    int error_count;
 } program_t;
+
+typedef struct {
+    int line;
+    int errno;
+} error_t;
 
 // Move into dedicated debugger header when that exists
 enum db_command { RUN, STEP, STEP_INTO, CONTINUE, BREAKPOINT, DELETE_BREAKPOINT };
