@@ -3,7 +3,7 @@
 #include <string.h>
 #include <getopt.h>
 
-#include "FC/overture.h"
+#include "overture/overture.h"
 #include "fcerrors.h"
 #include "fccommands.h"
 

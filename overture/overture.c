@@ -6,7 +6,7 @@
 
 #include "overture.h"
 #include "overture_compiler.h"
-#include "program.h"
+#include "../program.h"
 
 static program_t program = { 0 };
 static int error_count = 0;

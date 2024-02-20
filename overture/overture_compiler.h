@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-#include "program.h"
+#include "../program.h"
 
 enum machine_code_def {
 ADD = 64,

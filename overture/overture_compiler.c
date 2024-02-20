@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include "overture_compiler.h"
-#include "program.h"
+#include "../program.h"
 
 static program_t program = { 0 };
 static char *program_buf = NULL;
