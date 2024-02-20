@@ -1,0 +1,41 @@
+; Sum of all numbers below 1000 divisible by 3 or 5
+
+; reset stack
+mov sp nil
+
+; r0: the return register
+; r1: counter
+xor r0 r0
+push #1000  ; hack to load imm16
+pop r1
+sub r1 #1
+
+; use sum of consecutive naturals with multipliers instead of testing every integer
+
+; r2 = n
+; r3 = n + 1
+; r4 = n(n+1)
+; r5 = n(n+1)/2
+; r6 = r5 * 3
+div r2 r1 #3
+add r3 r2 #1
+mul r4 r2 r3
+div r5 r4 #2
+mul r6 r5 #3
+add r0 r6
+
+div r2 r1 #5
+add r3 r2 #1
+mul r4 r2 r3
+div r5 r4 #2
+mul r6 r5 #5
+add r0 r6
+
+div r2 r1 #15
+add r3 r2 #1
+mul r4 r2 r3
+div r5 r4 #2
+mul r6 r5 #15
+sub r0 r6
+
+halt

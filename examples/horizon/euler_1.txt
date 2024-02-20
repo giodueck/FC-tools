@@ -1,0 +1,28 @@
+; Sum of all numbers below 1000 divisible by 3 or 5
+
+; reset stack
+mov sp nil
+
+; r0: the return register
+; r1: counter
+xor r0 r0
+push #1000  ; hack to load imm16
+pop r1
+
+; decrement counter, then test divisibility, add if divisible
+loop:
+    subs r1 #1
+    jeq finish  ; if r1 == 0 break
+
+    mods r2 r1 #3
+    jeq add_num
+    mods r2 r1 #5
+    jeq add_num
+    jmp loop
+
+add_num:
+    add r0 r1
+    jmp loop
+
+finish:
+    halt
