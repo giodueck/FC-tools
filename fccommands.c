@@ -25,17 +25,18 @@ int opt;
 extern char *optarg;
 extern int optopt;
 
-const char *run_optstring = ":f:";
-const char *run_req_opt = "y";
-const char *run_opt_help[] = { "Filename of the program" };
+const char *run_optstring = ":f:a:";
+const char *run_req_opt = "yn";
+const char *run_opt_help[] = { "Filename of the program", "Architecture: overture or horizon (default: horizon)" };
 
 // Parse and compile program, then run it
-void parse_and_run(FILE *fd);
+void parse_and_run(FILE *fd, int arch);
 
 // Run a program
 int run(int argc, char **argv)
 {
     char filename[BUFSIZ] = "";
+    int arch = ARCH_HORIZON;
 
     while ((opt = getopt(argc, argv, run_optstring)) != -1)
     {
@@ -43,6 +44,18 @@ int run(int argc, char **argv)
         {
         case 'f':
             strcpy(filename, optarg);
+            break;
+        case 'a':
+            if (strcmp(optarg, "overture") == 0)
+                arch = ARCH_OVERTURE;
+            else if (strcmp(optarg, "horizon") == 0)
+                arch = ARCH_HORIZON;
+            else
+            {
+                error = ERR_INVALID_ARG;
+                help(argc, argv);
+                return error;
+            }
             break;
         case ':':
             error = ERR_NO_ARG;
@@ -65,9 +78,9 @@ int run(int argc, char **argv)
     }
 
     FILE *fd;
-    if ((fd = fopen(argv[2], "r")) != NULL)
+    if ((fd = fopen(filename, "r")) != NULL)
     {
-        parse_and_run(fd);
+        parse_and_run(fd, arch);
     } else
     {
         perror("run");
@@ -101,24 +114,30 @@ void run_help()
     }
 }
 
-void parse_and_run(FILE *fd)
+void parse_and_run(FILE *fd, int arch)
 {
-    overture_init();
-    int ret = overture_set_program(fd);
-
-    if (ret == 0)
+    if (arch == ARCH_OVERTURE)
     {
-        printf("Setting end: %d\n", overture_set_end(-1));
-        printf("Running program...");
-        fflush(stdout);
-        overture_run(RUN);
-        printf("done\n");
-        overture_register_map_t reg = overture_get_registers();
-        printf("R0: %d\nR1: %d\nR2: %d\nR3: %d\nR4: %d\nR5: %d\n", reg.r0, reg.r1, reg.r2, reg.r3, reg.r4, reg.r5);
-    }
+        overture_init();
+        int ret = overture_set_program(fd);
 
-    overture_free();
-    overture_quit();
+        if (ret == 0)
+        {
+            printf("Setting end: %d\n", overture_set_end(-1));
+            printf("Running program...");
+            fflush(stdout);
+            overture_run(RUN);
+            printf("done\n");
+            overture_register_map_t reg = overture_get_registers();
+            printf("R0: %d\nR1: %d\nR2: %d\nR3: %d\nR4: %d\nR5: %d\n", reg.r0, reg.r1, reg.r2, reg.r3, reg.r4, reg.r5);
+        }
+
+        overture_free();
+        overture_quit();
+    } else
+    {
+        printf("Architecture not implemented yet\n");
+    }
 }
 
 int compile(int argc, char **argv)
@@ -194,7 +213,10 @@ int help(int argc, char **argv)
                 printf("Error: Option -%c requires an argument\n", optopt);
                 break;
             case ERR_MISSING_OPT:
-                printf("Error: Missing required option: %c\n", missing_arg);
+                printf("Error: Missing required option: -%c\n", missing_arg);
+                break;
+            case ERR_INVALID_ARG:
+                printf("Error: Invalid argument for -%c: %s\n", opt, optarg);
                 break;
             default:
                 break;
