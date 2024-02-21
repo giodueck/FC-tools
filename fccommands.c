@@ -3,6 +3,7 @@
 #include <string.h>
 #include <getopt.h>
 
+#include "horizon/horizon_compiler.h"
 #include "overture/overture.h"
 #include "fcerrors.h"
 #include "fccommands.h"
@@ -134,6 +135,14 @@ void parse_and_run(FILE *fd, int arch)
 
         overture_free();
         overture_quit();
+    } else if (arch == ARCH_HORIZON)
+    {
+        program_t *program = horizon_parse(fd, NULL, 0);
+        for (int i = 0; i < program->len_lines; i++)
+        {
+            printf("%s\n", program->lines[i]);
+        }
+        horizon_free(program);
     } else
     {
         printf("Architecture not implemented yet\n");

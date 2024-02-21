@@ -316,7 +316,7 @@ void overture_free()
     free(program.symbols);
     free(program.lines);
     free(program.line_executable);
-    program = (program_t) { 0, NULL, 0, NULL, NULL };
+    program = (program_t) { 0 };
 
     free(program.code);
 }
