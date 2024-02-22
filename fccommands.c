@@ -140,7 +140,8 @@ void parse_and_run(FILE *fd, int arch)
         program_t *program = horizon_parse(fd, NULL, 0);
         for (int i = 0; i < program->len_lines; i++)
         {
-            printf("%s\n", program->lines[i]);
+            if (program->line_executable[i])
+                printf("%s\n", program->lines[i]);
         }
         horizon_free(program);
     } else

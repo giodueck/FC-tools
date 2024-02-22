@@ -4,7 +4,55 @@
 #include <string.h>
 #include "horizon_compiler.h"
 
+typedef struct Node {
+    char **tokens;
+    int freeable;
+    struct Node *next;
+} token_node;
+
 // Internal functions
+
+// Create liked list of n nodes
+static token_node *create_tokenll(int n)
+{
+    token_node *head = malloc(sizeof(token_node));
+    token_node *tail = head;
+    for (int i = 0; i < n - 1; i++)
+    {
+        tail->next = malloc(sizeof(token_node));
+        tail->freeable = 0;
+        if (tail->next == NULL)
+        {
+            perror("create_tokenll");
+            return head;
+        }
+        tail = tail->next;
+    }
+    return head;
+}
+
+// Free linked list, and if any node has a non-null tokens element and the freeable flag
+// is set, then free the tokens too
+static void free_tokenll(token_node *head)
+{
+    token_node *prev_head;
+
+    while (head)
+    {
+        if (head->tokens != NULL && head->freeable != 0)
+            free(head->tokens);
+
+        prev_head = head;
+        head = head->next;
+        free(prev_head);
+    }
+}
+
+static void insert_token_after_node(token_node *head, token_node *new_node)
+{
+    new_node->next = head->next;
+    head->next = new_node;
+}
 
 /* locate_forward, locate_backward and str_replace taken from https://stackoverflow.com/a/12546318 */
 
@@ -166,7 +214,7 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     int size = ftell(fd);
     rewind(fd);
 
-    program_t program = { 0 };
+    program_t program = { ARCH_HORIZON };
     char *program_buf = malloc(size + 1);
     char *buf = malloc(size + 1);
 
@@ -206,11 +254,49 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     }
 
     free(buf);
+    program.line_executable = malloc(sizeof(int) * program.len_lines);
+    program.code = malloc(sizeof(uint64_t) * program.len_lines);
 
     // First Pass: tokenize, get section, consts, handle built-in macros and @REP
     // blocks, handle labels, check instructions
 
+    // Pointer to array of strings
+    const int max_tokens = 128;
+    char ***tokens = malloc(sizeof(char**) * program.len_lines);
+    for (int i = 0; i < program.len_lines; i++)
+    {
+        // Just allocate a lot of space, normal instructions don't have a lot of
+        // tokens, but macros may
+        tokens[i] = malloc(sizeof(char*) * max_tokens);
+
+        for (int j = 0; j < max_tokens; j++)
+        {
+            if (j == 0)
+                tokens[i][j] = strtok(program.lines[i], " \t,");
+            else
+                tokens[i][j] = strtok(NULL, " \t,");
+
+            if (tokens[i][j] == NULL)
+                break;
+            program.line_executable[i] = 1;
+        }
+    }
+
+    // Iterate through lines for first pass
+    int repeat = 0;
+    for (int i = 0; i < program.len_lines; i++)
+    {
+        if (tokens[i][0] == NULL)
+            continue;
+
+
+    }
+
     // Success
+    for (int i = 0; i < program.len_lines; i++)
+        free(tokens[i]);
+    free(tokens);
+
     program_t *ret = malloc(sizeof(program_t));
     *ret = program;
     return ret;
