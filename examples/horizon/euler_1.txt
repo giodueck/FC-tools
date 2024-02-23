@@ -1,4 +1,12 @@
+;; Project Euler 1
 ; Sum of all numbers below 1000 divisible by 3 or 5
+
+.macro
+
+@const upper_limit 1000
+@const upper_limit 1000
+
+.program
 
 ; reset stack
 mov sp nil
@@ -6,7 +14,7 @@ mov sp nil
 ; r0: the return register
 ; r1: counter
 xor r0 r0
-push #1000  ; hack to load imm16
+push upper_limit  ; hack to load imm16
 pop r1
 
 ; decrement counter, then test divisibility, add if divisible

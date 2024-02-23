@@ -200,7 +200,312 @@ static char *trimwhitespace(char *str)
   return str;
 }
 
+static void horizon_syntax_error(const char *message, int line_minus_one)
+{
+    printf("Error on line %d:\n\t%s\n", line_minus_one + 1, message);
+}
+
 // End internal functions
+
+
+#define SECTION_PROGRAM 0
+#define SECTION_MACRO   1
+#define SECTION_DATA    2
+
+const char *instr_names[] = {
+    "ADD",
+    "SUB",
+    "MUL",
+    "DIV",
+    "MOD",
+    "EXP",
+    "LSH",
+    "RSH",
+    "AND",
+    "OR",
+    "NOT",
+    "XOR",
+    "BCAT",
+    "HCAT",
+    "ADDS",
+    "SUBS",
+    "MULS",
+    "DIVS",
+    "MODS",
+    "EXPS",
+    "LSHS",
+    "RSHS",
+    "ANDS",
+    "ORS",
+    "NOTS",
+    "XORS",
+    "BCATS",
+    "HCATS",
+    "JEQ",
+    "JNE",
+    "JLT",
+    "JGT",
+    "JLE",
+    "JGE",
+    "JNG",
+    "JPZ",
+    "JVS",
+    "JVC",
+    "JMP",
+    "NOOP",
+    "STORE",
+    "LOAD",
+    "STOREI",
+    "LOADI",
+    "STORED",
+    "LOADD",
+    "PUSH",
+    "POP",
+};
+
+enum instr_opcode {
+    ADD =       0,
+    SUB =       1,
+    MUL =       2,
+    DIV =       3,
+    MOD =       4,
+    EXP =       5,
+    LSH =       6,
+    RSH =       7,
+    AND =       8,
+    OR =        9,
+    NOT =       10,
+    XOR =       11,
+    BCAT =      12,
+    HCAT =      13,
+    ADDS =      16,
+    SUBS =      17,
+    MULS =      18,
+    DIVS =      19,
+    MODS =      20,
+    EXPS =      21,
+    LSHS =      22,
+    RSHS =      23,
+    ANDS =      24,
+    ORS =       25,
+    NOTS =      26,
+    XORS =      27,
+    BCATS =     28,
+    HCATS =     29,
+    JEQ =       32,
+    JNE =       33,
+    JLT =       34,
+    JGT =       35,
+    JLE =       36,
+    JGE =       37,
+    JNG =       38,
+    JPZ =       39,
+    JVS =       40,
+    JVC =       41,
+    JMP =       42,
+    NOOP =      43,
+    STORE =     48,
+    LOAD =      49,
+    STOREI =    50,
+    LOADI =     51,
+    STORED =    52,
+    LOADD =     53,
+    PUSH =      56,
+    POP =       57
+};
+
+const char *builtin_macro_names[] = {
+    "HALT",
+    "RESET",
+    "CMP",
+    "INC",
+    "INCS",
+    "DEC",
+    "DECS",
+    "CALL",
+    "RETURN",
+    "MOV",
+    "MOVS",
+    "MOV16"
+};
+
+const char *preprocessor_reserved[] = {
+    "CONST",
+    "DEFINE",
+    "INCLUDE",
+    "REP",
+    "END"
+};
+
+const char *data_directive_names[] = {
+    "TIMES"
+};
+
+const char *register_names[] = {
+    "R0",
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "R10",
+    "R11",
+    "AR",
+    "SP",
+    "LR",
+    "PC",
+    "NIL"
+};
+
+enum register_value {
+    R0 =    0,
+    R1 =    1,
+    R2 =    2,
+    R3 =    3,
+    R4 =    4,
+    R5 =    5,
+    R6 =    6,
+    R7 =    7,
+    R8 =    8,
+    R9 =    9,
+    R10 =   10,
+    R11 =   11,
+    AR =    12,
+    SP =    13,
+    LR =    14,
+    PC =    15,
+    NIL =   255
+};
+
+const char *reserved_labels[] = {
+    "RAM_START"
+};
+
+int horizon_is_reserved(const char *token)
+{
+    for (int i = 0; i < sizeof(instr_names) / sizeof(char*); i++)
+        if (strcmp(token, instr_names[i]) == 0)
+            return 1;
+
+    for (int i = 0; i < sizeof(builtin_macro_names)/sizeof(char*); i++)
+        if (strcmp(token, builtin_macro_names[i]) == 0)
+            return 1;
+
+    for (int i = 0; i < sizeof(preprocessor_reserved)/sizeof(char*); i++)
+        if (strcmp(token, preprocessor_reserved[i]) == 0)
+            return 1;
+
+    for (int i = 0; i < sizeof(data_directive_names)/sizeof(char*); i++)
+        if (strcmp(token, data_directive_names[i]) == 0)
+            return 1;
+
+    for (int i = 0; i < sizeof(register_names)/sizeof(char*); i++)
+        if (strcmp(token, register_names[i]) == 0)
+            return 1;
+
+    for (int i = 0; i < sizeof(reserved_labels)/sizeof(char*); i++)
+        if (strcmp(token, reserved_labels[i]) == 0)
+            return 1;
+
+    return 0;
+}
+
+int horizon_symbol_exists(program_t program, const char *token)
+{
+    for (int i = 0; i < program.len_symbols; i++)
+    {
+        if (strcmp(token, program.symbols[i].name) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+void horizon_handle_const(program_t *program, char **tokens, int i)
+{
+    if (tokens[1] == NULL || tokens[2] == NULL)
+    {
+        horizon_syntax_error("@CONST must be followed by an identifier and a value", i);
+        program->error_count++;
+        return;
+    }
+
+    // check if valid identifier
+    if (horizon_is_reserved(tokens[1]))
+    {
+        horizon_syntax_error("@CONST identifiers cannot be reserved words", i);
+        program->error_count++;
+        return;
+    }
+
+    // check if symbol exists
+    if (!horizon_symbol_exists(*program, tokens[1]))
+    {
+        uint32_t val;
+        if (tokens[2][0] == '0')
+        {
+            if (tokens[2][1] == 'X')
+            {
+                char *end = NULL;
+                val = strtol(tokens[2], &end, 16);
+                // end should be the end of the string
+                if (end[0] != '\0')
+                {
+                    horizon_syntax_error("Invalid hex literal", i);
+                    program->error_count++;
+                    return;
+                }
+            } else if (tokens[2][1] == 'B')
+            {
+                char *end = NULL;
+                val = strtol(&tokens[2][2], &end, 2);
+                // end should be the end of the string
+                if (end[0] != '\0')
+                {
+                    horizon_syntax_error("Invalid binary literal", i);
+                    program->error_count++;
+                    return;
+                }
+            } else
+            {
+                char *end = NULL;
+                val = strtol(tokens[2], &end, 8);
+                // end should be the end of the string
+                if (end[0] != '\0')
+                {
+                    horizon_syntax_error("Invalid octal literal", i);
+                    program->error_count++;
+                    return;
+                }
+            }
+        } else
+        {
+            char *end = NULL;
+            val = strtol(tokens[2], &end, 10);
+            // end should be the end of the string
+            if (end[0] != '\0')
+            {
+                horizon_syntax_error("Invalid literal", i);
+                program->error_count++;
+                return;
+            }
+        }
+
+        program->symbols[program->len_symbols++] = (symbol_t) { .name = tokens[1], .value = val };
+    }
+    // else if tokens[1] is already a symbol
+    else
+    {
+        char buf[BUFSIZ] = "";
+        snprintf(buf, BUFSIZ, "%s defined multiple times", tokens[1]);
+        horizon_syntax_error(buf, i);
+        program->error_count++;
+        return;
+    }
+}
 
 // Parse program to build the symbol table and check for errors
 // Returns the pointer to a newly allocated program_t
@@ -254,8 +559,11 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     }
 
     free(buf);
+
+    // Allocate the needed program space
     program.line_executable = malloc(sizeof(int) * program.len_lines);
-    program.code = malloc(sizeof(uint64_t) * program.len_lines);
+    int symbol_space = 100;
+    program.symbols = malloc(sizeof(symbol_t) * symbol_space);
 
     // First Pass: tokenize, get section, consts, handle built-in macros and @REP
     // blocks, handle labels, check instructions
@@ -284,12 +592,37 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
 
     // Iterate through lines for first pass
     int repeat = 0;
+    int section = SECTION_PROGRAM;
+    int program_reached = 0;
     for (int i = 0; i < program.len_lines; i++)
     {
         if (tokens[i][0] == NULL)
             continue;
 
+        // TODO: handle REP blocks
 
+        // Preprocessor
+        if (tokens[i][0][0] == '@')
+        {
+            if (strcmp(tokens[i][0], "@CONST") == 0)
+            {
+                if (program.len_symbols >= symbol_space - 1)
+                {
+                    symbol_space += 100;
+                    program.symbols = realloc(program.symbols, sizeof(symbol_t) * symbol_space);
+                }
+                horizon_handle_const(&program, tokens[i], i);
+            }
+        }
+    }
+
+    // End first pass
+    if (program.error_count)
+        printf("%d error%s.\n\n", program.error_count, (program.error_count > 1) ? "s" : "");
+    printf("Symbols:\n");
+    for (int i = 0; i < program.len_symbols; i++)
+    {
+        printf("\t%s: %d\n", program.symbols[i].name, program.symbols[i].value);
     }
 
     // Success
