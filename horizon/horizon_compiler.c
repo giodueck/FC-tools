@@ -56,39 +56,28 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     program.symbols = malloc(sizeof(symbol_t) * symbol_space);
 
     uint32_t num;
-    match_whitespace(&program_buf);
-    int retval = match_literal(&num, &program_buf);
-    if (retval != 0)
-    {
-        parser_perror("horizon_parser", retval);
-    }
-    printf("%u\n", num);
-    num = 0;
+    int retval;
 
-    retval = match_newline(&program_buf);
-    parser_perror("horizon_parser", retval);
-    if (retval != 0)
-        printf("Expected a second line\n");
-    else
+    for (int i = 0; i < 17; i++)
     {
-        retval = match_imm8(&num, &program_buf);
+        match_whitespace(&program_buf);
+        retval = match_register(&num, &program_buf);
         if (retval != 0)
-            parser_perror("horizon_parser", retval);
-    }
-    printf("%u\n", num);
-
-    retval = match_newline(&program_buf);
-    parser_perror("horizon_parser", retval);
-    if (retval != 0)
-        printf("Expected a second line\n");
-    else
-    {
-        retval = match_imm16(&num, &program_buf);
+        {
+            parser_perror("horizon_parse", retval);
+            break;
+        }
+        printf("%u\n", num);
+        retval = match_newline(&program_buf);
         if (retval != 0)
-            parser_perror("horizon_parser", retval);
+        {
+            if (retval == ERR_EOF)
+                break;
+            parser_perror("horizon_parse", retval);
+            break;
+        }
     }
 
-    printf("%u\n", num);
     printf("unparsed text: %s\n", program_buf);
 
     program_t *ret = malloc(sizeof(program_t));

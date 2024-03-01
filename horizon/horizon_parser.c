@@ -120,7 +120,69 @@ int match_imm16(uint32_t *dest, char **buf)
 // Match a register and set dest to its number
 int match_register(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        // Match only the register, which must be at the beginning of the string
+        reret = regcomp(&regex, "^\\(R[0-9]\\)\\|\\(R1[01]\\)\\|\\(AR\\)\\|\\(SP\\)\\|\\(LR\\)\\|\\(PC\\)\\|\\(NIL\\)", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &regex, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    if (ret != 0)
+        return ERR_NO_MATCH;
+
+    if (match.rm_eo - match.rm_so == 3)
+    {
+        if ((*buf)[2] == '0')
+            *dest = 10;
+        else if ((*buf)[2] == '1')
+            *dest = 11;
+        else // NIL
+            *dest = 255;
+
+        *buf += match.rm_eo - match.rm_so;
+        return NO_ERR;
+    }
+
+    switch ((*buf)[0])
+    {
+    case 'r':
+    case 'R':
+        *dest = (*buf)[1] - '0';
+        break;
+    case 'a':
+    case 'A':
+        *dest = 12;
+        break;
+    case 's':
+    case 'S':
+        *dest = 13;
+        break;
+    case 'l':
+    case 'L':
+        *dest = 14;
+        break;
+    case 'p':
+    case 'P':
+        *dest = 15;
+        break;
+    default:
+        *dest = -1;
+        return ERR_NO_MATCH;
+    }
+
+    *buf += match.rm_eo - match.rm_so;
+    return NO_ERR;
 }
 
 // Match a defined identifier and set dest to its value
