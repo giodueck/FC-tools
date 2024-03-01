@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "../program.h"
+#include "horizon_parser.h"
 
 // raw_output: outputs only binary (uint32 instructions) instead of BP strings
 struct horizon_compiler_opt {

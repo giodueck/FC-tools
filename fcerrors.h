@@ -9,4 +9,9 @@
 #define ERR_MISSING_OPT     5
 #define ERR_INVALID_ARG     6
 
+#define ERR_NO_MATCH        100
+#define ERR_OUT_OF_RANGE_8  101
+#define ERR_OUT_OF_RANGE_16 102
+#define ERR_OUT_OF_RANGE_32 103
+
 #endif // FC_ERROR_H
