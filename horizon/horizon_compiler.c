@@ -1,4 +1,3 @@
-#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -6,31 +5,6 @@
 #include "horizon_parser.h"
 
 // Internal helper functions
-
-// Note: This function returns a pointer to a substring of the original string.
-// If the given string was allocated dynamically, the caller must not overwrite
-// that pointer with the returned value, since the original pointer must be
-// deallocated using the same allocator with which it was allocated.  The return
-// value must NOT be deallocated using free() etc.
-static char *trimwhitespace(char *str)
-{
-  char *end;
-
-  // Trim leading space
-  while(isspace((unsigned char)*str)) str++;
-
-  if(*str == 0)  // All spaces?
-    return str;
-
-  // Trim trailing space
-  end = str + strlen(str) - 1;
-  while(end > str && isspace((unsigned char)*end)) end--;
-
-  // Write new null terminator character
-  end[1] = '\0';
-
-  return str;
-}
 
 static void horizon_syntax_error(const char *message, int line_minus_one)
 {
@@ -82,11 +56,38 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     program.symbols = malloc(sizeof(symbol_t) * symbol_space);
 
     uint32_t num;
+    match_whitespace(&program_buf);
     int retval = match_literal(&num, &program_buf);
     if (retval != 0)
     {
         parser_perror("horizon_parser", retval);
     }
+    printf("%u\n", num);
+    num = 0;
+
+    retval = match_newline(&program_buf);
+    parser_perror("horizon_parser", retval);
+    if (retval != 0)
+        printf("Expected a second line\n");
+    else
+    {
+        retval = match_imm8(&num, &program_buf);
+        if (retval != 0)
+            parser_perror("horizon_parser", retval);
+    }
+    printf("%u\n", num);
+
+    retval = match_newline(&program_buf);
+    parser_perror("horizon_parser", retval);
+    if (retval != 0)
+        printf("Expected a second line\n");
+    else
+    {
+        retval = match_imm16(&num, &program_buf);
+        if (retval != 0)
+            parser_perror("horizon_parser", retval);
+    }
+
     printf("%u\n", num);
     printf("unparsed text: %s\n", program_buf);
 

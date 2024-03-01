@@ -8,6 +8,8 @@
 #define ERR_OUT_OF_RANGE_8  101
 #define ERR_OUT_OF_RANGE_16 102
 #define ERR_OUT_OF_RANGE_32 103
+#define ERR_UNEXPECTED_NL   104
+#define ERR_EOF             105
 
 // Grammar rules
 
@@ -21,6 +23,7 @@ int match_register(uint32_t *dest, char **buf);
 int match_identifier(uint32_t *dest, char **buf);
 int match_new_identifier(uint32_t *dest, char **buf);
 int match_whitespace(char **buf);
+int match_newline(char **buf);
 int match_comment(char **buf);
 int match_error(char **buf);
 

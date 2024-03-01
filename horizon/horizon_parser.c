@@ -14,7 +14,8 @@ int match_literal(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = regcomp(&regex, "[:blank:]*[\\(0x[:xdigit:]\\{1,\\}\\)\\(-\\{0,1\\}[:digit:]\\{1,\\}\\)]", REG_ICASE);
+        // Match only the literal, which must be at the beginning of the string
+        reret = regcomp(&regex, "^[\\(0x[:xdigit:]\\{1,\\}\\)\\(-\\{0,1\\}[:digit:]\\{1,\\}\\)]", REG_ICASE);
         if (reret)
         {
             char errbuf[BUFSIZ] = "";
@@ -51,13 +52,69 @@ int match_literal(uint32_t *dest, char **buf)
 // Match a literal starting with '#' which is 8-bits wide and set dest to its value
 int match_imm8(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    if (**buf == '#')
+        (*buf)++;
+    else
+    {
+        *dest = -1;
+        return ERR_NO_MATCH;
+    }
+
+    int res = match_literal(dest, buf);
+    if (res != NO_ERR)
+    {
+        switch (res)
+        {
+        case ERR_OUT_OF_RANGE_32:
+            return ERR_OUT_OF_RANGE_8;
+        default:
+            return res;
+        }
+    }
+
+    int32_t num = *dest & 0xFFFFFFFF;
+    if (num < INT8_MIN || num > UINT8_MAX)
+    {
+        *dest = -1;
+        return ERR_OUT_OF_RANGE_8;
+    }
+    *dest &= 0xFF;
+
+    return NO_ERR;
 }
 
 // Match a literal starting with '#' which is 16-bits wide and set dest to its value
 int match_imm16(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    if (**buf == '#')
+        (*buf)++;
+    else
+    {
+        *dest = -1;
+        return ERR_NO_MATCH;
+    }
+
+    int res = match_literal(dest, buf);
+    if (res != NO_ERR)
+    {
+        switch (res)
+        {
+        case ERR_OUT_OF_RANGE_32:
+            return ERR_OUT_OF_RANGE_16;
+        default:
+            return res;
+        }
+    }
+
+    int32_t num = *dest & 0xFFFFFFFF;
+    if (num < INT16_MIN || num > UINT16_MAX)
+    {
+        *dest = -1;
+        return ERR_OUT_OF_RANGE_16;
+    }
+    *dest &= 0xFFFF;
+
+    return NO_ERR;
 }
 
 // Match a register and set dest to its number
@@ -78,16 +135,42 @@ int match_new_identifier(uint32_t *dest, char **buf)
     return ERR_NOT_IMPLEMENTED;
 }
 
-// Match whitespace, including newlines. If a newline is found, return a value
-// indicating that
+// Match whitespace, excluding newlines. Never returns errors, even with no whitespace
 int match_whitespace(char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    while (**buf == ' ' || **buf == '\t')
+        (*buf)++;
+    return NO_ERR;
 }
 
-// Match a comment with its ending newline
+// Match a single newline character, preceded and followed optionally by whitespace
+// and optionally preceded by a comment
+int match_newline(char **buf)
+{
+    match_comment(buf);
+    if (**buf == '\n')
+    {
+        (*buf)++;
+        if (**buf == '\0')
+            return ERR_EOF;
+    } else if (**buf == '\0')
+        return ERR_EOF;
+    else
+        return ERR_NO_MATCH;
+    match_whitespace(buf);
+
+    return NO_ERR;
+}
+
+// Match a comment without its ending newline
 int match_comment(char **buf)
 {
+    match_whitespace(buf);
+    if (**buf == ';')
+    {
+        while (**buf != '\n')
+            (*buf)++;
+    }
     return ERR_NOT_IMPLEMENTED;
 }
 
@@ -211,6 +294,8 @@ void parser_perror(char *msg, int error)
 {
     switch (error)
     {
+    case NO_ERR:
+        break;
     case ERR_NO_MATCH:
         printf("%s: no match found\n", msg);
         break;
@@ -223,5 +308,10 @@ void parser_perror(char *msg, int error)
     case ERR_OUT_OF_RANGE_32:
         printf("%s: number out of range (less than %d or greater than %u)\n", msg, INT32_MIN, UINT32_MAX);
         break;
+    case ERR_UNEXPECTED_NL:
+        printf("%s: unexpected newline\n", msg);
+        break;
+    case ERR_EOF:
+        printf("%s: found EOF\n", msg);
     }
 }
