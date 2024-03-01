@@ -73,7 +73,7 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     program.len_lines = 0;
     while (!feof(fd))
     {
-        fread(program.lines_buf, 1, size, fd);
+        fread(program_buf, 1, size, fd);
     }
 
     // Allocate the needed program space
@@ -82,8 +82,13 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     program.symbols = malloc(sizeof(symbol_t) * symbol_space);
 
     uint32_t num;
-    match_literal(&num, &program.lines_buf);
+    int retval = match_literal(&num, &program_buf);
+    if (retval != 0)
+    {
+        parser_perror("horizon_parser", retval);
+    }
     printf("%u\n", num);
+    printf("unparsed text: %s\n", program_buf);
 
     program_t *ret = malloc(sizeof(program_t));
     *ret = program;

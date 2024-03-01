@@ -4,6 +4,11 @@
 #include <stdint.h>
 #include "../program.h"
 
+#define ERR_NO_MATCH        100
+#define ERR_OUT_OF_RANGE_8  101
+#define ERR_OUT_OF_RANGE_16 102
+#define ERR_OUT_OF_RANGE_32 103
+
 // Grammar rules
 
 // Match means advance the buffer and insert the matched token's value into dest
@@ -43,6 +48,8 @@ int parse_cond(program_t *program, char **buf);
 int parse_push(program_t *program, char **buf);
 int parse_instruction(program_t *program, char **buf);
 int parse_statement(program_t *program, char **buf);
+
+void parser_perror(char *msg, int error);
 
 
 #endif // HORIZON_PARSER_H

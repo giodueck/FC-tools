@@ -42,6 +42,9 @@ int match_literal(uint32_t *dest, char **buf)
     // In case it is negative
     *dest = num & 0xFFFFFFFF;
 
+    // Advance buffer pointer
+    *buf = endptr;
+
     return NO_ERR;
 }
 
@@ -202,3 +205,23 @@ int parse_statement(program_t *program, char **buf)
     return ERR_NOT_IMPLEMENTED;
 }
 
+
+// Print an error message for a parser error
+void parser_perror(char *msg, int error)
+{
+    switch (error)
+    {
+    case ERR_NO_MATCH:
+        printf("%s: no match found\n", msg);
+        break;
+    case ERR_OUT_OF_RANGE_8:
+        printf("%s: number out of range (less than %d or greater than %u)\n", msg, INT8_MIN, UINT8_MAX);
+        break;
+    case ERR_OUT_OF_RANGE_16:
+        printf("%s: number out of range (less than %d or greater than %u)\n", msg, INT16_MIN, UINT16_MAX);
+        break;
+    case ERR_OUT_OF_RANGE_32:
+        printf("%s: number out of range (less than %d or greater than %u)\n", msg, INT32_MIN, UINT32_MAX);
+        break;
+    }
+}

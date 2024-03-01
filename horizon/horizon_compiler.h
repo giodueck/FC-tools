@@ -17,7 +17,7 @@ enum horizon_errors {
     HOR_OK,
 
     // Implementation related
-    HOR_ERR_NOT_IMPLEMENTED
+    HOR_ERR_NOT_IMPLEMENTED,
 
     // Parsing related
 
