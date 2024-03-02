@@ -56,17 +56,34 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     uint32_t num;
     int retval;
 
-    retval = match_identifier(&num, &program_buf);
-    if (retval)
-        parser_perror("horizon_parser", retval);
-    else
+    int i = 1;
+    while (1)
     {
-        int i = program.len_symbols;
-        program.symbols[i].name = malloc(256);
-        strncpy(program.symbols[i].name, program_buf, num);
-        program.symbols[i].name[num] = '\0';
-        printf("%s\n", program.symbols[i].name);
-        program.len_symbols++;
+        retval = match_identifier(&num, &program_buf);
+        if (retval)
+        {
+            char errbuf[BUFSIZ] = { 0 };
+            sprintf(errbuf, "error on line %d", i);
+            parser_perror(errbuf, retval);
+            retval = match_error(&program_buf);
+        }
+        else
+        {
+            int i = program.len_symbols;
+            program.symbols[i].name = malloc(256);
+            strncpy(program.symbols[i].name, program_buf, num);
+            program.symbols[i].name[num] = '\0';
+            printf("%s\n", program.symbols[i].name);
+            program.len_symbols++;
+
+            program_buf += num;
+
+            retval = match_newline(&program_buf);
+        }
+        if (retval == ERR_EOF)
+            break;
+        i++;
+
     }
 
     printf("unparsed text: %s\n", program_buf);
@@ -87,7 +104,7 @@ void horizon_free(program_t *program)
     if (program->len_symbols)
     {
         for (int i = 0; i < program->len_symbols; i++)
-            free(program->symbols->name);
+            free(program->symbols[i].name);
     }
     if (program->symbols)
         free(program->symbols);

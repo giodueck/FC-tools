@@ -268,12 +268,15 @@ int match_register(uint32_t *dest, char **buf)
         return ERR_NO_MATCH;
     }
 
+    // Advance buffer
     *buf += match.rm_eo - match.rm_so;
     return NO_ERR;
 }
 
 // Match an identifier and set dest to its length
 // Whether the identifier is new or already defined can be handled by the parser rule
+// The buffer is not advanced by this function, instead the caller can read dest
+// bytes and obtain the identifier, then advance the buffer dest positions
 int match_identifier(uint32_t *dest, char **buf)
 {
     static regex_t regex;
@@ -348,13 +351,15 @@ int match_comment(char **buf)
         while (**buf != '\n')
             (*buf)++;
     }
-    return ERR_NOT_IMPLEMENTED;
+    return NO_ERR;
 }
 
-// Match anything until the next newline
+// Match anything until the next newline, then call match_newline
 int match_error(char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    while (**buf != '\n' && **buf != '\0')
+        (*buf)++;
+    return match_newline(buf);
 }
 
 
