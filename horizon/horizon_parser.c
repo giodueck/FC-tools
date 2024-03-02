@@ -94,6 +94,57 @@ const char *horizon_reserved[] = {
     "RAM_START"
 };
 
+enum horizon_opcode {
+    ADD =       0,
+    SUB =       1,
+    MUL =       2,
+    DIV =       3,
+    MOD =       4,
+    EXP =       5,
+    LSH =       6,
+    RSH =       7,
+    AND =       8,
+    OR =        9,
+    NOT =       10,
+    XOR =       11,
+    BCAT =      12,
+    HCAT =      13,
+    ADDS =      16,
+    SUBS =      17,
+    MULS =      18,
+    DIVS =      19,
+    MODS =      20,
+    EXPS =      21,
+    LSHS =      22,
+    RSHS =      23,
+    ANDS =      24,
+    ORS =       25,
+    NOTS =      26,
+    XORS =      27,
+    BCATS =     28,
+    HCATS =     29,
+    JEQ =       32,
+    JNE =       33,
+    JLT =       34,
+    JGT =       35,
+    JLE =       36,
+    JGE =       37,
+    JNG =       38,
+    JPZ =       39,
+    JVS =       40,
+    JVC =       41,
+    JMP =       42,
+    NOOP =      43,
+    STORE =     48,
+    LOAD =      49,
+    STOREI =    50,
+    LOADI =     51,
+    STORED =    52,
+    LOADD =     53,
+    PUSH =      56,
+    POP =       57
+};
+
 // Match a base 8, 10 or 16 number and set dest to its value
 int match_literal(uint32_t *dest, char **buf)
 {
@@ -283,7 +334,7 @@ int match_identifier(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        // Match only the register, which must be at the beginning of the string
+        // Match only the identifier, which must be at the beginning of the string
         reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
         if (reret)
         {
@@ -363,37 +414,178 @@ int match_error(char **buf)
 }
 
 
-// Match the noop instruction
+// Match the noop instruction and set dest to the opcode
 int match_noop(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        // Match only the instruction, which must be at the beginning of the string
+        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &regex, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len != 4)
+        return ERR_NO_MATCH;
+
+    if (strncmp(*buf, "NOOP", len) == 0)
+    {
+        *dest = NOOP;
+        *buf += len;
+        return NO_ERR;
+    }
+
+    return ERR_NO_MATCH;
 }
 
-//Match the not or the pop instruction
+//Match the not or the pop instruction and set dest to the opcode
 int match_not_pop(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        // Match only the instruction, which must be at the beginning of the string
+        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &regex, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len != 3 || len != 4)
+        return ERR_NO_MATCH;
+
+    if (len == 3)
+    {
+        if (strncmp(*buf, "NOT", len) == 0)
+        {
+            *dest = NOT;
+            *buf += len;
+            return NO_ERR;
+        } else if (strncmp(*buf, "POP", len) == 0)
+        {
+            *dest = POP;
+            *buf += len;
+            return NO_ERR;
+        }
+    } else
+    {
+        if (strncmp(*buf, "NOTS", len) == 0)
+        {
+            *dest = NOTS;
+            *buf += len;
+            return NO_ERR;
+        }
+    }
+
+    return ERR_NO_MATCH;
 }
 
-// Match any alu instruction except not
+// Match any alu instruction except not and set dest to the opcode
 int match_alu(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        // Match only the instruction, which must be at the beginning of the string
+        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &regex, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len < 2 || len > 5)
+        return ERR_NO_MATCH;
+
+    if (len == 2 && strncmp(*buf, "OR", len) == 0)
+    {
+        *dest = OR;
+        *buf += len;
+        return NO_ERR;
+    } else if (len == 3)
+    {
+        if (strncmp(*buf, "ADD", len) == 0)
+        {
+            *dest = ADD;
+            *buf += len;
+            return NO_ERR;
+        }
+        // all the other ones, i need to eat
+    }
+
+    return ERR_NO_MATCH;
 }
 
-// Match the push instruction
+// Match the push instruction and set dest to the opcode
 int match_push(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        // Match only the instruction, which must be at the beginning of the string
+        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &regex, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len != 4)
+        return ERR_NO_MATCH;
+
+    if (strncmp(*buf, "PUSH", len) == 0)
+    {
+        *dest = PUSH;
+        *buf += len;
+        return NO_ERR;
+    }
+
+    return ERR_NO_MATCH;
 }
 
-// Match any jump instruction
+// Match any jump instruction and set dest to the opcode
 int match_cond(uint32_t *dest, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-// Match any memory access instruction
+// Match any memory access instruction and set dest to the opcode
 int match_mem(uint32_t *dest, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
