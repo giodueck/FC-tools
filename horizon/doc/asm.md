@@ -13,9 +13,9 @@ The `@const` directive is now used like so:
 .const identifier literal
 ```
 where `identifier` is a non-reserved name starting with a letter or underscore and
-containing letters, underscores or numbers, and `literal` is a numeric literal, in
-either base 16 when starting with `0x`, base 8 when starting with `0`, or base 10
-when starting with any other digit.
+containing letters, underscores or numbers and no longer than 255 characters, and
+`literal` is a numeric literal, in either base 16 when starting with `0x`, base 8
+when starting with `0`, or base 10 when starting with any other digit.
 
 ### Var
 The `.var` directive is used like so:

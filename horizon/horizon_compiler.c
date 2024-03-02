@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -39,43 +40,33 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     char *program_buf = malloc(size + 1);
 
     program.lines_buf = program_buf;
-    size_t n_lines = 1000;
-    program.lines = malloc(sizeof(char*) * n_lines);
 
     // Read whole program in
-    int i = 0;
     program.len_lines = 0;
-    while (!feof(fd))
+    fread(program_buf, 1, size, fd);
+    for (int i = 0; i < size; i++)
     {
-        fread(program_buf, 1, size, fd);
+        program_buf[i] = toupper(program_buf[i]);
     }
 
     // Allocate the needed program space
-    program.line_executable = malloc(sizeof(int) * program.len_lines);
     int symbol_space = 100;
     program.symbols = malloc(sizeof(symbol_t) * symbol_space);
 
     uint32_t num;
     int retval;
 
-    for (int i = 0; i < 17; i++)
+    retval = match_identifier(&num, &program_buf);
+    if (retval)
+        parser_perror("horizon_parser", retval);
+    else
     {
-        match_whitespace(&program_buf);
-        retval = match_register(&num, &program_buf);
-        if (retval != 0)
-        {
-            parser_perror("horizon_parse", retval);
-            break;
-        }
-        printf("%u\n", num);
-        retval = match_newline(&program_buf);
-        if (retval != 0)
-        {
-            if (retval == ERR_EOF)
-                break;
-            parser_perror("horizon_parse", retval);
-            break;
-        }
+        int i = program.len_symbols;
+        program.symbols[i].name = malloc(256);
+        strncpy(program.symbols[i].name, program_buf, num);
+        program.symbols[i].name[num] = '\0';
+        printf("%s\n", program.symbols[i].name);
+        program.len_symbols++;
     }
 
     printf("unparsed text: %s\n", program_buf);
@@ -93,12 +84,13 @@ void horizon_free(program_t *program)
         return;
     if (program->lines_buf)
         free(program->lines_buf);
-    if (program->lines)
-        free(program->lines);
-    if (program->line_executable)
-        free(program->line_executable);
-    if (program->code)
-        free(program->code);
+    if (program->len_symbols)
+    {
+        for (int i = 0; i < program->len_symbols; i++)
+            free(program->symbols->name);
+    }
+    if (program->symbols)
+        free(program->symbols);
     free(program);
     return;
 }

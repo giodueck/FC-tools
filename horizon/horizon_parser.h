@@ -10,6 +10,8 @@
 #define ERR_OUT_OF_RANGE_32 103
 #define ERR_UNEXPECTED_NL   104
 #define ERR_EOF             105
+#define ERR_IDENT_TOO_LONG  106
+#define ERR_RESERVED_WORD   107
 
 // Grammar rules
 
@@ -21,7 +23,6 @@ int match_imm8(uint32_t *dest, char **buf);
 int match_imm16(uint32_t *dest, char **buf);
 int match_register(uint32_t *dest, char **buf);
 int match_identifier(uint32_t *dest, char **buf);
-int match_new_identifier(uint32_t *dest, char **buf);
 int match_whitespace(char **buf);
 int match_newline(char **buf);
 int match_comment(char **buf);
@@ -52,7 +53,9 @@ int parse_push(program_t *program, char **buf);
 int parse_instruction(program_t *program, char **buf);
 int parse_statement(program_t *program, char **buf);
 
-void parser_perror(char *msg, int error);
+// Helper functions
 
+void parser_perror(char *msg, int error);
+int is_reserved(const char *word);
 
 #endif // HORIZON_PARSER_H

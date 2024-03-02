@@ -3,9 +3,96 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "horizon_parser.h"
 #include "../fcerrors.h"
+
+const char *horizon_reserved[] = {
+    "ADD",
+    "SUB",
+    "MUL",
+    "DIV",
+    "MOD",
+    "EXP",
+    "LSH",
+    "RSH",
+    "AND",
+    "OR",
+    "NOT",
+    "XOR",
+    "BCAT",
+    "HCAT",
+    "ADDS",
+    "SUBS",
+    "MULS",
+    "DIVS",
+    "MODS",
+    "EXPS",
+    "LSHS",
+    "RSHS",
+    "ANDS",
+    "ORS",
+    "NOTS",
+    "XORS",
+    "BCATS",
+    "HCATS",
+    "JEQ",
+    "JNE",
+    "JLT",
+    "JGT",
+    "JLE",
+    "JGE",
+    "JNG",
+    "JPZ",
+    "JVS",
+    "JVC",
+    "JMP",
+    "NOOP",
+    "STORE",
+    "LOAD",
+    "STOREI",
+    "LOADI",
+    "STORED",
+    "LOADD",
+    "PUSH",
+    "POP",
+    "HALT",
+    "RESET",
+    "CMP",
+    "INC",
+    "INCS",
+    "DEC",
+    "DECS",
+    "CALL",
+    "RETURN",
+    "MOV",
+    "MOVS",
+    "MOV16",
+    "CONST",
+    "DEFINE",
+    "INCLUDE",
+    "VAR",
+    "ARRAY",
+    "R0",
+    "R1",
+    "R2",
+    "R3",
+    "R4",
+    "R5",
+    "R6",
+    "R7",
+    "R8",
+    "R9",
+    "R10",
+    "R11",
+    "AR",
+    "SP",
+    "LR",
+    "PC",
+    "NIL",
+    "RAM_START"
+};
 
 // Match a base 8, 10 or 16 number and set dest to its value
 int match_literal(uint32_t *dest, char **buf)
@@ -185,16 +272,44 @@ int match_register(uint32_t *dest, char **buf)
     return NO_ERR;
 }
 
-// Match a defined identifier and set dest to its value
+// Match an identifier and set dest to its length
+// Whether the identifier is new or already defined can be handled by the parser rule
 int match_identifier(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
-}
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        // Match only the register, which must be at the beginning of the string
+        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &regex, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+    }
 
-// Match a new identifier and set dest to its index in the symbols array
-int match_new_identifier(uint32_t *dest, char **buf)
-{
-    return ERR_NOT_IMPLEMENTED;
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    *dest = -1;
+    if (ret != 0)
+        return ERR_NO_MATCH;
+
+    int len = match.rm_eo - match.rm_so;
+    if (len > 255)
+        return ERR_IDENT_TOO_LONG;
+
+    char word[256] = { 0 };
+    strncpy(word, *buf, len);
+
+    if (is_reserved(word))
+        return ERR_RESERVED_WORD;
+
+    *dest = len;
+    return NO_ERR;
 }
 
 // Match whitespace, excluding newlines. Never returns errors, even with no whitespace
@@ -375,5 +490,23 @@ void parser_perror(char *msg, int error)
         break;
     case ERR_EOF:
         printf("%s: found EOF\n", msg);
+        break;
+    case ERR_IDENT_TOO_LONG:
+        printf("%s: identifier too long (max 255 characters)\n", msg);
+        break;
+    case ERR_RESERVED_WORD:
+        printf("%s: cannot use reserved word as identifier\n", msg);
+        break;
     }
+}
+
+// Returns 1 if the word string is a reserved word, and 0 if not
+int is_reserved(const char *word)
+{
+    for (int i = 0; i < sizeof(horizon_reserved)/sizeof(char*); i++)
+    {
+        if (strcmp(word, horizon_reserved[i]) == 0)
+            return 1;
+    }
+    return 0;
 }
