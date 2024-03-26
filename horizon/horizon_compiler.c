@@ -1,4 +1,5 @@
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,13 +60,27 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     int i = 1;
     while (1)
     {
-        retval = match_identifier(&num, &program_buf);
+        while (!ho_match_newline(&program_buf))
+            i++;
+        if (retval == ERR_EOF)
+            break;
+        retval = ho_match_identifier(&num, &program_buf);
         if (retval)
         {
-            char errbuf[BUFSIZ] = { 0 };
-            sprintf(errbuf, "error on line %d", i);
-            parser_perror(errbuf, retval);
-            retval = match_error(&program_buf);
+            uint32_t dest = 0;
+            int other_ret = ho_match_alu(&dest, &program_buf);
+            if (!other_ret)
+            {
+                printf("opcode: %u\n", dest);
+                retval = ho_match_newline(&program_buf);
+            }
+            else
+            {
+                char errbuf[BUFSIZ] = { 0 };
+                sprintf(errbuf, "error on line %d", i);
+                ho_parser_perror(errbuf, retval);
+                retval = ho_match_error(&program_buf);
+            }
         }
         else
         {
@@ -78,7 +93,7 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
 
             program_buf += num;
 
-            retval = match_newline(&program_buf);
+            retval = ho_match_newline(&program_buf);
         }
         if (retval == ERR_EOF)
             break;

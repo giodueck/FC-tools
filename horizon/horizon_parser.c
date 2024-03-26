@@ -90,8 +90,11 @@ const char *horizon_reserved[] = {
     "SP",
     "LR",
     "PC",
-    "NIL",
-    "RAM_START"
+    "NIL"
+};
+
+const char *horizon_reserved_ident[] = {
+    "RAM"
 };
 
 enum horizon_opcode {
@@ -146,7 +149,7 @@ enum horizon_opcode {
 };
 
 // Match a base 8, 10 or 16 number and set dest to its value
-int match_literal(uint32_t *dest, char **buf)
+int ho_match_literal(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
@@ -188,7 +191,7 @@ int match_literal(uint32_t *dest, char **buf)
 }
 
 // Match a literal starting with '#' which is 8-bits wide and set dest to its value
-int match_imm8(uint32_t *dest, char **buf)
+int ho_match_imm8(uint32_t *dest, char **buf)
 {
     if (**buf == '#')
         (*buf)++;
@@ -198,7 +201,7 @@ int match_imm8(uint32_t *dest, char **buf)
         return ERR_NO_MATCH;
     }
 
-    int res = match_literal(dest, buf);
+    int res = ho_match_literal(dest, buf);
     if (res != NO_ERR)
     {
         switch (res)
@@ -222,7 +225,7 @@ int match_imm8(uint32_t *dest, char **buf)
 }
 
 // Match a literal starting with '#' which is 16-bits wide and set dest to its value
-int match_imm16(uint32_t *dest, char **buf)
+int ho_match_imm16(uint32_t *dest, char **buf)
 {
     if (**buf == '#')
         (*buf)++;
@@ -232,7 +235,7 @@ int match_imm16(uint32_t *dest, char **buf)
         return ERR_NO_MATCH;
     }
 
-    int res = match_literal(dest, buf);
+    int res = ho_match_literal(dest, buf);
     if (res != NO_ERR)
     {
         switch (res)
@@ -256,7 +259,7 @@ int match_imm16(uint32_t *dest, char **buf)
 }
 
 // Match a register and set dest to its number
-int match_register(uint32_t *dest, char **buf)
+int ho_match_register(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
@@ -328,7 +331,7 @@ int match_register(uint32_t *dest, char **buf)
 // Whether the identifier is new or already defined can be handled by the parser rule
 // The buffer is not advanced by this function, instead the caller can read dest
 // bytes and obtain the identifier, then advance the buffer dest positions
-int match_identifier(uint32_t *dest, char **buf)
+int ho_match_identifier(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
@@ -359,7 +362,7 @@ int match_identifier(uint32_t *dest, char **buf)
     char word[256] = { 0 };
     strncpy(word, *buf, len);
 
-    if (is_reserved(word))
+    if (ho_is_reserved(word))
         return ERR_RESERVED_WORD;
 
     *dest = len;
@@ -367,7 +370,7 @@ int match_identifier(uint32_t *dest, char **buf)
 }
 
 // Match whitespace, excluding newlines. Never returns errors, even with no whitespace
-int match_whitespace(char **buf)
+int ho_match_whitespace(char **buf)
 {
     while (**buf == ' ' || **buf == '\t')
         (*buf)++;
@@ -376,9 +379,9 @@ int match_whitespace(char **buf)
 
 // Match a single newline character, preceded and followed optionally by whitespace
 // and optionally preceded by a comment
-int match_newline(char **buf)
+int ho_match_newline(char **buf)
 {
-    match_comment(buf);
+    ho_match_comment(buf);
     if (**buf == '\n')
     {
         (*buf)++;
@@ -388,15 +391,15 @@ int match_newline(char **buf)
         return ERR_EOF;
     else
         return ERR_NO_MATCH;
-    match_whitespace(buf);
+    ho_match_whitespace(buf);
 
     return NO_ERR;
 }
 
 // Match a comment without its ending newline
-int match_comment(char **buf)
+int ho_match_comment(char **buf)
 {
-    match_whitespace(buf);
+    ho_match_whitespace(buf);
     if (**buf == ';')
     {
         while (**buf != '\n')
@@ -406,23 +409,23 @@ int match_comment(char **buf)
 }
 
 // Match anything until the next newline, then call match_newline
-int match_error(char **buf)
+int ho_match_error(char **buf)
 {
     while (**buf != '\n' && **buf != '\0')
         (*buf)++;
-    return match_newline(buf);
+    return ho_match_newline(buf);
 }
 
 
 // Match the noop instruction and set dest to the opcode
-int match_noop(uint32_t *dest, char **buf)
+int ho_match_noop(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
         // Match only the instruction, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        reret = regcomp(&regex, "^[A-Z]*", REG_ICASE);
         if (reret)
         {
             char errbuf[BUFSIZ] = "";
@@ -450,14 +453,14 @@ int match_noop(uint32_t *dest, char **buf)
 }
 
 //Match the not or the pop instruction and set dest to the opcode
-int match_not_pop(uint32_t *dest, char **buf)
+int ho_match_not_pop(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
         // Match only the instruction, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        reret = regcomp(&regex, "^[A-Z]*", REG_ICASE);
         if (reret)
         {
             char errbuf[BUFSIZ] = "";
@@ -471,7 +474,7 @@ int match_not_pop(uint32_t *dest, char **buf)
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
-    if (ret != 0 || len != 3 || len != 4)
+    if (ret != 0 || len < 3 || len > 4)
         return ERR_NO_MATCH;
 
     if (len == 3)
@@ -501,14 +504,14 @@ int match_not_pop(uint32_t *dest, char **buf)
 }
 
 // Match any alu instruction except not and set dest to the opcode
-int match_alu(uint32_t *dest, char **buf)
+int ho_match_alu(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
         // Match only the instruction, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        reret = regcomp(&regex, "^[A-Z]*", REG_ICASE);
         if (reret)
         {
             char errbuf[BUFSIZ] = "";
@@ -545,14 +548,14 @@ int match_alu(uint32_t *dest, char **buf)
 }
 
 // Match the push instruction and set dest to the opcode
-int match_push(uint32_t *dest, char **buf)
+int ho_match_push(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
         // Match only the instruction, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        reret = regcomp(&regex, "^[A-Z]*", REG_ICASE);
         if (reret)
         {
             char errbuf[BUFSIZ] = "";
@@ -580,91 +583,91 @@ int match_push(uint32_t *dest, char **buf)
 }
 
 // Match any jump instruction and set dest to the opcode
-int match_cond(uint32_t *dest, char **buf)
+int ho_match_cond(uint32_t *dest, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
 // Match any memory access instruction and set dest to the opcode
-int match_mem(uint32_t *dest, char **buf)
+int ho_match_mem(uint32_t *dest, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
 
-int parse_value(program_t *program, char **buf)
+int ho_parse_value(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_value_list(program_t *program, char **buf)
+int ho_parse_value_list(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_directive(program_t *program, char **buf)
+int ho_parse_directive(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_label(program_t *program, char **buf)
+int ho_parse_label(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_format_2(program_t *program, char **buf)
+int ho_parse_format_2(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_format_3(program_t *program, char **buf)
+int ho_parse_format_3(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_format_4(program_t *program, char **buf)
+int ho_parse_format_4(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_format_5(program_t *program, char **buf)
+int ho_parse_format_5(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_alu(program_t *program, char **buf)
+int ho_parse_alu(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_ram(program_t *program, char **buf)
+int ho_parse_ram(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_cond(program_t *program, char **buf)
+int ho_parse_cond(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_push(program_t *program, char **buf)
+int ho_parse_push(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_instruction(program_t *program, char **buf)
+int ho_parse_instruction(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int parse_statement(program_t *program, char **buf)
+int ho_parse_statement(program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
 
 // Print an error message for a parser error
-void parser_perror(char *msg, int error)
+void ho_parser_perror(char *msg, int error)
 {
     switch (error)
     {
@@ -698,11 +701,22 @@ void parser_perror(char *msg, int error)
 }
 
 // Returns 1 if the word string is a reserved word, and 0 if not
-int is_reserved(const char *word)
+int ho_is_reserved(const char *word)
 {
     for (int i = 0; i < sizeof(horizon_reserved)/sizeof(char*); i++)
     {
         if (strcmp(word, horizon_reserved[i]) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+// Returns 1 if the word string is a reserved identifier, and 0 if not
+int ho_is_reserved_ident(const char *ident)
+{
+    for (int i = 0; i < sizeof(horizon_reserved_ident)/sizeof(char*); i++)
+    {
+        if (strcmp(ident, horizon_reserved_ident[i]) == 0)
             return 1;
     }
     return 0;
