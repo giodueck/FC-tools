@@ -107,54 +107,54 @@ const char *horizon_reserved_ident[] = {
 };
 
 enum horizon_opcode {
-    ADD =       0,
-    SUB =       1,
-    MUL =       2,
-    DIV =       3,
-    MOD =       4,
-    EXP =       5,
-    LSH =       6,
-    RSH =       7,
-    AND =       8,
-    OR =        9,
-    NOT =       10,
-    XOR =       11,
-    BCAT =      12,
-    HCAT =      13,
-    ADDS =      16,
-    SUBS =      17,
-    MULS =      18,
-    DIVS =      19,
-    MODS =      20,
-    EXPS =      21,
-    LSHS =      22,
-    RSHS =      23,
-    ANDS =      24,
-    ORS =       25,
-    NOTS =      26,
-    XORS =      27,
-    BCATS =     28,
-    HCATS =     29,
-    JEQ =       32,
-    JNE =       33,
-    JLT =       34,
-    JGT =       35,
-    JLE =       36,
-    JGE =       37,
-    JNG =       38,
-    JPZ =       39,
-    JVS =       40,
-    JVC =       41,
-    JMP =       42,
-    NOOP =      43,
-    STORE =     48,
-    LOAD =      49,
-    STOREI =    50,
-    LOADI =     51,
-    STORED =    52,
-    LOADD =     53,
-    PUSH =      56,
-    POP =       57
+    HO_ADD =       0,
+    HO_SUB =       1,
+    HO_MUL =       2,
+    HO_DIV =       3,
+    HO_MOD =       4,
+    HO_EXP =       5,
+    HO_LSH =       6,
+    HO_RSH =       7,
+    HO_AND =       8,
+    HO_OR =        9,
+    HO_NOT =       10,
+    HO_XOR =       11,
+    HO_BCAT =      12,
+    HO_HCAT =      13,
+    HO_ADDS =      16,
+    HO_SUBS =      17,
+    HO_MULS =      18,
+    HO_DIVS =      19,
+    HO_MODS =      20,
+    HO_EXPS =      21,
+    HO_LSHS =      22,
+    HO_RSHS =      23,
+    HO_ANDS =      24,
+    HO_ORS =       25,
+    HO_NOTS =      26,
+    HO_XORS =      27,
+    HO_BCATS =     28,
+    HO_HCATS =     29,
+    HO_JEQ =       32,
+    HO_JNE =       33,
+    HO_JLT =       34,
+    HO_JGT =       35,
+    HO_JLE =       36,
+    HO_JGE =       37,
+    HO_JNG =       38,
+    HO_JPZ =       39,
+    HO_JVS =       40,
+    HO_JVC =       41,
+    HO_JMP =       42,
+    HO_NOOP =      43,
+    HO_STORE =     48,
+    HO_LOAD =      49,
+    HO_STOREI =    50,
+    HO_LOADI =     51,
+    HO_STORED =    52,
+    HO_LOADD =     53,
+    HO_PUSH =      56,
+    HO_POP =       57
 };
 
 // Initilizes all regex used by the parser
@@ -479,7 +479,7 @@ int ho_match_noop(uint32_t *dest, char **buf)
 
     if (strncmp(*buf, "NOOP", len) == 0)
     {
-        *dest = NOOP;
+        *dest = HO_NOOP;
         *buf += len;
         return NO_ERR;
     }
@@ -509,12 +509,12 @@ int ho_match_not_pop(uint32_t *dest, char **buf)
     {
         if (strncmp(*buf, "NOT", len) == 0)
         {
-            *dest = NOT;
+            *dest = HO_NOT;
             *buf += len;
             return NO_ERR;
         } else if (strncmp(*buf, "POP", len) == 0)
         {
-            *dest = POP;
+            *dest = HO_POP;
             *buf += len;
             return NO_ERR;
         }
@@ -522,7 +522,7 @@ int ho_match_not_pop(uint32_t *dest, char **buf)
     {
         if (strncmp(*buf, "NOTS", len) == 0)
         {
-            *dest = NOTS;
+            *dest = HO_NOTS;
             *buf += len;
             return NO_ERR;
         }
@@ -551,18 +551,165 @@ int ho_match_alu(uint32_t *dest, char **buf)
 
     if (len == 2 && strncmp(*buf, "OR", len) == 0)
     {
-        *dest = OR;
+        *dest = HO_OR;
         *buf += len;
         return NO_ERR;
     } else if (len == 3)
     {
         if (strncmp(*buf, "ADD", len) == 0)
         {
-            *dest = ADD;
+            *dest = HO_ADD;
             *buf += len;
             return NO_ERR;
         }
-        // all the other ones, i need to eat
+        if (strncmp(*buf, "SUB", len) == 0)
+        {
+            *dest = HO_SUB;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "MUL", len) == 0)
+        {
+            *dest = HO_MUL;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "DIV", len) == 0)
+        {
+            *dest = HO_DIV;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "MOD", len) == 0)
+        {
+            *dest = HO_MOD;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "EXP", len) == 0)
+        {
+            *dest = HO_EXP;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "LSH", len) == 0)
+        {
+            *dest = HO_LSH;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "RSH", len) == 0)
+        {
+            *dest = HO_RSH;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "AND", len) == 0)
+        {
+            *dest = HO_AND;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "XOR", len) == 0)
+        {
+            *dest = HO_XOR;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "ORS", len) == 0)
+        {
+            *dest = HO_ORS;
+            *buf += len;
+            return NO_ERR;
+        }
+    } else if (len == 4)
+    {
+        if (strncmp(*buf, "BCAT", len) == 0)
+        {
+            *dest = HO_BCAT;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "HCAT", len) == 0)
+        {
+            *dest = HO_HCAT;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "ADDS", len) == 0)
+        {
+            *dest = HO_ADDS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "SUBS", len) == 0)
+        {
+            *dest = HO_SUBS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "MULS", len) == 0)
+        {
+            *dest = HO_MULS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "DIVS", len) == 0)
+        {
+            *dest = HO_DIVS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "MODS", len) == 0)
+        {
+            *dest = HO_MODS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "EXPS", len) == 0)
+        {
+            *dest = HO_EXPS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "LSHS", len) == 0)
+        {
+            *dest = HO_LSHS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "RSHS", len) == 0)
+        {
+            *dest = HO_RSHS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "ANDS", len) == 0)
+        {
+            *dest = HO_ANDS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "XORS", len) == 0)
+        {
+            *dest = HO_XORS;
+            *buf += len;
+            return NO_ERR;
+        }
+    } else if (len == 5)
+    {
+        if (strncmp(*buf, "BCATS", len) == 0)
+        {
+            *dest = HO_BCATS;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "HCATS", len) == 0)
+        {
+            *dest = HO_HCATS;
+            *buf += len;
+            return NO_ERR;
+        }
     }
 
     return ERR_NO_MATCH;
@@ -588,7 +735,7 @@ int ho_match_push(uint32_t *dest, char **buf)
 
     if (strncmp(*buf, "PUSH", len) == 0)
     {
-        *dest = PUSH;
+        *dest = HO_PUSH;
         *buf += len;
         return NO_ERR;
     }
