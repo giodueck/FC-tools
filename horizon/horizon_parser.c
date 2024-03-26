@@ -8,6 +8,15 @@
 #include "horizon_parser.h"
 #include "../fcerrors.h"
 
+struct horizon_regex_t {
+    regex_t literal_re;
+    regex_t register_re;
+    regex_t identifier_re;
+    regex_t instruction_re;
+};
+
+static struct horizon_regex_t horizon_regex = { 0 };
+
 const char *horizon_reserved[] = {
     "ADD",
     "SUB",
@@ -148,6 +157,60 @@ enum horizon_opcode {
     POP =       57
 };
 
+// Initilizes all regex used by the parser
+int ho_init_regex()
+{
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        // Match only the literal, which must be at the beginning of the string
+        reret = regcomp(&horizon_regex.literal_re, "^[\\(0x[:xdigit:]\\{1,\\}\\)\\(-\\{0,1\\}[:digit:]\\{1,\\}\\)]", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &horizon_regex.literal_re, errbuf, BUFSIZ);
+            fprintf(stderr, "match_literal: %s\n", errbuf);
+            exit(1);
+        }
+
+        // Match only the register, which must be at the beginning of the string
+        reret = regcomp(&horizon_regex.register_re, "^\\(R[0-9]\\)\\|\\(R1[01]\\)\\|\\(AR\\)\\|\\(SP\\)\\|\\(LR\\)\\|\\(PC\\)\\|\\(NIL\\)", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &horizon_regex.register_re, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+
+        // Match only the identifier, which must be at the beginning of the string
+        reret = regcomp(&horizon_regex.identifier_re, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &horizon_regex.identifier_re, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+
+        // Match only the instruction, which must be at the beginning of the string
+        reret = regcomp(&horizon_regex.instruction_re, "^[A-Z]*", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &horizon_regex.instruction_re, errbuf, BUFSIZ);
+            fprintf(stderr, "match_register: %s\n", errbuf);
+            exit(1);
+        }
+    }
+    else
+    {
+        return reret;
+    }
+
+    return NO_ERR;
+}
+
 // Match a base 8, 10 or 16 number and set dest to its value
 int ho_match_literal(uint32_t *dest, char **buf)
 {
@@ -155,15 +218,8 @@ int ho_match_literal(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        // Match only the literal, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[\\(0x[:xdigit:]\\{1,\\}\\)\\(-\\{0,1\\}[:digit:]\\{1,\\}\\)]", REG_ICASE);
-        if (reret)
-        {
-            char errbuf[BUFSIZ] = "";
-            regerror(reret, &regex, errbuf, BUFSIZ);
-            fprintf(stderr, "match_literal: %s\n", errbuf);
-            exit(1);
-        }
+        reret = ho_init_regex();
+        regex = horizon_regex.literal_re;
     }
 
     regmatch_t match;
@@ -265,15 +321,8 @@ int ho_match_register(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        // Match only the register, which must be at the beginning of the string
-        reret = regcomp(&regex, "^\\(R[0-9]\\)\\|\\(R1[01]\\)\\|\\(AR\\)\\|\\(SP\\)\\|\\(LR\\)\\|\\(PC\\)\\|\\(NIL\\)", REG_ICASE);
-        if (reret)
-        {
-            char errbuf[BUFSIZ] = "";
-            regerror(reret, &regex, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
-            exit(1);
-        }
+        reret = ho_init_regex();
+        regex = horizon_regex.register_re;
     }
 
     regmatch_t match;
@@ -337,15 +386,8 @@ int ho_match_identifier(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        // Match only the identifier, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z_][A-Z_0-9]*", REG_ICASE);
-        if (reret)
-        {
-            char errbuf[BUFSIZ] = "";
-            regerror(reret, &regex, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
-            exit(1);
-        }
+        reret = ho_init_regex();
+        regex = horizon_regex.identifier_re;
     }
 
     regmatch_t match;
@@ -424,15 +466,8 @@ int ho_match_noop(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        // Match only the instruction, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z]*", REG_ICASE);
-        if (reret)
-        {
-            char errbuf[BUFSIZ] = "";
-            regerror(reret, &regex, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
-            exit(1);
-        }
+        reret = ho_init_regex();
+        regex = horizon_regex.instruction_re;
     }
 
     regmatch_t match;
@@ -459,15 +494,8 @@ int ho_match_not_pop(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        // Match only the instruction, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z]*", REG_ICASE);
-        if (reret)
-        {
-            char errbuf[BUFSIZ] = "";
-            regerror(reret, &regex, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
-            exit(1);
-        }
+        reret = ho_init_regex();
+        regex = horizon_regex.instruction_re;
     }
 
     regmatch_t match;
@@ -510,15 +538,8 @@ int ho_match_alu(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        // Match only the instruction, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z]*", REG_ICASE);
-        if (reret)
-        {
-            char errbuf[BUFSIZ] = "";
-            regerror(reret, &regex, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
-            exit(1);
-        }
+        reret = ho_init_regex();
+        regex = horizon_regex.instruction_re;
     }
 
     regmatch_t match;
@@ -554,15 +575,8 @@ int ho_match_push(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        // Match only the instruction, which must be at the beginning of the string
-        reret = regcomp(&regex, "^[A-Z]*", REG_ICASE);
-        if (reret)
-        {
-            char errbuf[BUFSIZ] = "";
-            regerror(reret, &regex, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
-            exit(1);
-        }
+        reret = ho_init_regex();
+        regex = horizon_regex.instruction_re;
     }
 
     regmatch_t match;
