@@ -13,6 +13,7 @@ struct horizon_regex_t {
     regex_t register_re;
     regex_t identifier_re;
     regex_t instruction_re;
+    regex_t directive_re;
 };
 
 static struct horizon_regex_t horizon_regex = { 0 };
@@ -159,6 +160,15 @@ enum horizon_opcode {
     HO_POP =       57
 };
 
+enum horizon_directive {
+    HO_CONST,
+    HO_VAR,
+    HO_ARRAY,
+    HO_START,
+    HO_NAME,
+    HO_DESC,
+};
+
 // Initilizes all regex used by the parser
 int ho_init_regex()
 {
@@ -171,7 +181,7 @@ int ho_init_regex()
         {
             char errbuf[BUFSIZ] = "";
             regerror(reret, &horizon_regex.literal_re, errbuf, BUFSIZ);
-            fprintf(stderr, "match_literal: %s\n", errbuf);
+            fprintf(stderr, "ho_init_regex: %s\n", errbuf);
             exit(1);
         }
 
@@ -181,7 +191,7 @@ int ho_init_regex()
         {
             char errbuf[BUFSIZ] = "";
             regerror(reret, &horizon_regex.register_re, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
+            fprintf(stderr, "ho_init_regex: %s\n", errbuf);
             exit(1);
         }
 
@@ -191,7 +201,7 @@ int ho_init_regex()
         {
             char errbuf[BUFSIZ] = "";
             regerror(reret, &horizon_regex.identifier_re, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
+            fprintf(stderr, "ho_init_regex: %s\n", errbuf);
             exit(1);
         }
 
@@ -201,7 +211,17 @@ int ho_init_regex()
         {
             char errbuf[BUFSIZ] = "";
             regerror(reret, &horizon_regex.instruction_re, errbuf, BUFSIZ);
-            fprintf(stderr, "match_register: %s\n", errbuf);
+            fprintf(stderr, "ho_init_regex: %s\n", errbuf);
+            exit(1);
+        }
+
+        // Match only the directive, which must be at the beginning of the string
+        reret = regcomp(&horizon_regex.directive_re, "^\\.[A-Z]*", REG_ICASE);
+        if (reret)
+        {
+            char errbuf[BUFSIZ] = "";
+            regerror(reret, &horizon_regex.instruction_re, errbuf, BUFSIZ);
+            fprintf(stderr, "ho_init_regex: %s\n", errbuf);
             exit(1);
         }
     }
@@ -413,6 +433,71 @@ int ho_match_identifier(uint32_t *dest, char **buf)
     return NO_ERR;
 }
 
+// Match every directive and set dest to the matched directive
+int ho_match_directive(uint32_t *dest, char **buf)
+{
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        reret = ho_init_regex();
+        regex = horizon_regex.directive_re;
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len < 4 || len > 6)
+        return ERR_NO_MATCH;
+
+    if (len == 4)
+    {
+        if (strncmp(*buf, ".VAR", len) == 0)
+        {
+            *dest = HO_VAR;
+            *buf += len;
+            return NO_ERR;
+        }
+    } else if (len == 5)
+    {
+        if (strncmp(*buf, ".NAME", len) == 0)
+        {
+            *dest = HO_NAME;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, ".DESC", len) == 0)
+        {
+            *dest = HO_DESC;
+            *buf += len;
+            return NO_ERR;
+        }
+    } else if (len == 6)
+    {
+        if (strncmp(*buf, ".CONST", len) == 0)
+        {
+            *dest = HO_CONST;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, ".ARRAY", len) == 0)
+        {
+            *dest = HO_ARRAY;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, ".START", len) == 0)
+        {
+            *dest = HO_START;
+            *buf += len;
+            return NO_ERR;
+        }
+    }
+
+    return ERR_NO_MATCH;
+}
+
 // Match whitespace, excluding newlines. Never returns errors, even with no whitespace
 int ho_match_whitespace(char **buf)
 {
@@ -456,7 +541,11 @@ int ho_match_comment(char **buf)
 int ho_match_error(char **buf)
 {
     while (**buf != '\n' && **buf != '\0')
+    {
+        putchar(**buf);
         (*buf)++;
+    }
+    printf("\n\n");
     return ho_match_newline(buf);
 }
 

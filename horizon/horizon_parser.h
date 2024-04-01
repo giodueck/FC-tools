@@ -23,6 +23,7 @@ int ho_match_imm8(uint32_t *dest, char **buf);
 int ho_match_imm16(uint32_t *dest, char **buf);
 int ho_match_register(uint32_t *dest, char **buf);
 int ho_match_identifier(uint32_t *dest, char **buf);
+int ho_match_directive(uint32_t *dest, char **buf);
 int ho_match_whitespace(char **buf);
 int ho_match_newline(char **buf);
 int ho_match_comment(char **buf);
