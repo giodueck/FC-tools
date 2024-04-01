@@ -41,6 +41,39 @@ The `value-list` may be up to `value` items long, and these are the values the a
 is initialized to. If the list is shorter than `value` specifies, the missing values
 are assumed to be zero and initialized as such.
 
+### Start
+The `.start` directive is used like so:
+```
+.start
+```
+
+This directive signifies the entrypoint of the program, and is implied at the first
+instruction if left out.
+
+This directive can be used once in a program.
+
+### Name
+The `.name` directive is used like so:
+```
+.name ; COMMENT
+```
+where `; COMMENT` is a single line comment. This comment is then used for the
+name of the blueprint for the compiled program.
+
+This directive can be used once in a program.
+
+### Desc
+The `.desc` directive is used like so:
+```
+.desc ; MULTI-LINE
+      ; COMMENT
+```
+where a block of lines empty except for comments starting with a comment on the same
+line as the directive is set as the description of the blueprint for the compiled
+program.
+
+This directive can be used once in a program.
+
 ### @rep...@end
 The `@rep` and `@end` preprocessor keywords were scrapped, as there seems to be no
 real problem they meaningfully solve.
@@ -54,3 +87,9 @@ Labels are as they were previously:
 identifier:
 ```
 where `identifier` is as defined above.
+
+## Reserved identifiers
+### RAM
+The `ram` identifier is reserved: it cannot be defined but can be referenced as a
+constant. It points to the address after the last instruction in the program, i.e.
+freely usable memory.
