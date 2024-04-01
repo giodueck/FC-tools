@@ -68,7 +68,7 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
         if (retval)
         {
             uint32_t dest = 0;
-            int other_ret = ho_match_alu(&dest, &program_buf);
+            int other_ret = ho_match_mem(&dest, &program_buf);
             if (!other_ret)
             {
                 printf("opcode: %u\n", dest);

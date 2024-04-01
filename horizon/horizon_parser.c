@@ -83,6 +83,8 @@ const char *horizon_reserved[] = {
     "INCLUDE",
     "VAR",
     "ARRAY",
+    "NAME",
+    "DESC",
     "R0",
     "R1",
     "R2",
@@ -746,13 +748,151 @@ int ho_match_push(uint32_t *dest, char **buf)
 // Match any jump instruction and set dest to the opcode
 int ho_match_cond(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        reret = ho_init_regex();
+        regex = horizon_regex.instruction_re;
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len != 3)
+        return ERR_NO_MATCH;
+
+    if (strncmp(*buf, "JMP", len) == 0)
+    {
+        *dest = HO_JMP;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JEQ", len) == 0)
+    {
+        *dest = HO_JEQ;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JNE", len) == 0)
+    {
+        *dest = HO_JNE;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JLT", len) == 0)
+    {
+        *dest = HO_JLT;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JGT", len) == 0)
+    {
+        *dest = HO_JGT;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JLE", len) == 0)
+    {
+        *dest = HO_JLE;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JGE", len) == 0)
+    {
+        *dest = HO_JGE;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JNG", len) == 0)
+    {
+        *dest = HO_JNG;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JPZ", len) == 0)
+    {
+        *dest = HO_JPZ;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JVS", len) == 0)
+    {
+        *dest = HO_JVS;
+        *buf += len;
+        return NO_ERR;
+    }
+    if (strncmp(*buf, "JVC", len) == 0)
+    {
+        *dest = HO_JVC;
+        *buf += len;
+        return NO_ERR;
+    }
+
+    return ERR_NO_MATCH;
 }
 
 // Match any memory access instruction and set dest to the opcode
 int ho_match_mem(uint32_t *dest, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        reret = ho_init_regex();
+        regex = horizon_regex.instruction_re;
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len < 4 || len > 6)
+        return ERR_NO_MATCH;
+
+    if (len == 4 && strncmp(*buf, "LOAD", len) == 0)
+    {
+        *dest = HO_LOAD;
+        *buf += len;
+        return NO_ERR;
+    } else if (len == 5)
+    {
+        if (strncmp(*buf, "STORE", len) == 0)
+        {
+            *dest = HO_STORE;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "LOADI", len) == 0)
+        {
+            *dest = HO_LOADI;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "LOADD", len) == 0)
+        {
+            *dest = HO_LOADD;
+            *buf += len;
+            return NO_ERR;
+        }
+    } else if (len == 6)
+    {
+        if (strncmp(*buf, "STOREI", len) == 0)
+        {
+            *dest = HO_STOREI;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "STORED", len) == 0)
+        {
+            *dest = HO_STORED;
+            *buf += len;
+            return NO_ERR;
+        }
+    }
+
+    return ERR_NO_MATCH;
 }
 
 
