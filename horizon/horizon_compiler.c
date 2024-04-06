@@ -5,25 +5,7 @@
 #include <string.h>
 #include "horizon_compiler.h"
 #include "horizon_parser.h"
-
-// Internal helper functions
-
-static void horizon_syntax_error(const char *message, int line_minus_one)
-{
-    printf("Error on line %d:\n\t%s\n", line_minus_one + 1, message);
-}
-
-int horizon_symbol_exists(program_t program, const char *token)
-{
-    for (int i = 0; i < program.len_symbols; i++)
-    {
-        if (strcmp(token, program.symbols[i].name) == 0)
-            return 1;
-    }
-    return 0;
-}
-
-// End internal helper functions
+#include "../fcerrors.h"
 
 // Parse program to build the symbol table and check for errors
 // Returns the pointer to a newly allocated program_t
@@ -53,52 +35,34 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     // Allocate the needed program space
     int symbol_space = 100;
     program.symbols = malloc(sizeof(symbol_t) * symbol_space);
+    program.len_symbols_space = symbol_space;
 
     uint32_t num;
     int retval;
 
-    int i = 1;
-    while (1)
+    ho_add_symbol(&program, "RAM", 1234, HO_SYM_CONST);
+    int line = 1;
+    while (retval != ERR_EOF)
     {
+        // This will consume whitespace even without newlines
         while (!ho_match_newline(&program_buf))
-            i++;
+            line++;
         if (retval == ERR_EOF)
             break;
-        retval = ho_match_identifier(&num, &program_buf);
-        if (retval)
-        {
-            uint32_t dest = 0;
-            int other_ret = ho_match_directive(&dest, &program_buf);
-            if (!other_ret)
-            {
-                printf("directive: %u\n", dest);
-                retval = ho_match_newline(&program_buf);
-            }
-            else
-            {
-                char errbuf[BUFSIZ] = { 0 };
-                sprintf(errbuf, "error on line %d", i);
-                ho_parser_perror(errbuf, retval);
-                retval = ho_match_error(&program_buf);
-            }
-        }
-        else
-        {
-            int i = program.len_symbols;
-            program.symbols[i].name = malloc(256);
-            strncpy(program.symbols[i].name, program_buf, num);
-            program.symbols[i].name[num] = '\0';
-            printf("%s\n", program.symbols[i].name);
-            program.len_symbols++;
 
-            program_buf += num;
-
+        int lines_consumed = 0;
+        retval = ho_parse_statement(&program, &lines_consumed, &program_buf);
+        if (retval != NO_ERR)
+        {
+            ho_parser_perror(NULL, retval, line);
+            retval = ho_match_error(&program_buf);
+        } else
+        {
             retval = ho_match_newline(&program_buf);
         }
-        if (retval == ERR_EOF)
-            break;
-        i++;
 
+        line += lines_consumed;
+        line++;
     }
 
     printf("unparsed text: %s\n", program_buf);
@@ -153,8 +117,6 @@ void horizon_perror(int error)
             printf("not implemented\n");
             fflush(stdout);
             break;
-
-        // Parsing
 
         // Compiling
 

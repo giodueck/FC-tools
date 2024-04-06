@@ -6,6 +6,7 @@
 typedef struct {
     char *name;
     uint32_t value;
+    int type;
 } symbol_t;
 
 #define ARCH_OVERTURE   0
@@ -16,6 +17,7 @@ typedef struct {
     int arch;
 
     int len_symbols;
+    int len_symbols_space;
     symbol_t *symbols;      // malloced
 
     char *lines_buf;        // malloced

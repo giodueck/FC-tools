@@ -8,16 +8,6 @@
 #include "horizon_parser.h"
 #include "../fcerrors.h"
 
-struct horizon_regex_t {
-    regex_t literal_re;
-    regex_t register_re;
-    regex_t identifier_re;
-    regex_t instruction_re;
-    regex_t directive_re;
-};
-
-static struct horizon_regex_t horizon_regex = { 0 };
-
 const char *horizon_reserved[] = {
     "ADD",
     "SUB",
@@ -109,65 +99,51 @@ const char *horizon_reserved_ident[] = {
     "RAM"
 };
 
-enum horizon_opcode {
-    HO_ADD =       0,
-    HO_SUB =       1,
-    HO_MUL =       2,
-    HO_DIV =       3,
-    HO_MOD =       4,
-    HO_EXP =       5,
-    HO_LSH =       6,
-    HO_RSH =       7,
-    HO_AND =       8,
-    HO_OR =        9,
-    HO_NOT =       10,
-    HO_XOR =       11,
-    HO_BCAT =      12,
-    HO_HCAT =      13,
-    HO_ADDS =      16,
-    HO_SUBS =      17,
-    HO_MULS =      18,
-    HO_DIVS =      19,
-    HO_MODS =      20,
-    HO_EXPS =      21,
-    HO_LSHS =      22,
-    HO_RSHS =      23,
-    HO_ANDS =      24,
-    HO_ORS =       25,
-    HO_NOTS =      26,
-    HO_XORS =      27,
-    HO_BCATS =     28,
-    HO_HCATS =     29,
-    HO_JEQ =       32,
-    HO_JNE =       33,
-    HO_JLT =       34,
-    HO_JGT =       35,
-    HO_JLE =       36,
-    HO_JGE =       37,
-    HO_JNG =       38,
-    HO_JPZ =       39,
-    HO_JVS =       40,
-    HO_JVC =       41,
-    HO_JMP =       42,
-    HO_NOOP =      43,
-    HO_STORE =     48,
-    HO_LOAD =      49,
-    HO_STOREI =    50,
-    HO_LOADI =     51,
-    HO_STORED =    52,
-    HO_LOADD =     53,
-    HO_PUSH =      56,
-    HO_POP =       57
-};
+// Print an error message
+void ho_syntax_error(const char *message, int line_minus_one)
+{
+    printf("Error on line %d:\n\t%s\n", line_minus_one + 1, message);
+}
 
-enum horizon_directive {
-    HO_CONST,
-    HO_VAR,
-    HO_ARRAY,
-    HO_START,
-    HO_NAME,
-    HO_DESC,
-};
+// Check if an identifier has already been defined
+int ho_symbol_exists(program_t program, const char *token)
+{
+    for (int i = 0; i < program.len_symbols; i++)
+    {
+        if (strcmp(token, program.symbols[i].name) == 0)
+            return 1;
+    }
+    return 0;
+}
+
+// Define a new symbol
+int ho_add_symbol(program_t *program, const char *ident, uint32_t value, int type)
+{
+    int i = program->len_symbols;
+    int ident_len = strlen(ident);
+
+    if (program->len_symbols_space >= i)
+    {
+        program->len_symbols_space += 100;
+        program->symbols = realloc(program->symbols, sizeof(symbol_t) * program->len_symbols_space);
+    }
+
+    program->symbols[i].name = malloc(HORIZON_IDENT_MAX_LEN + 1);
+    strncpy(program->symbols[i].name, ident, ident_len);
+
+    if (ident_len < HORIZON_IDENT_MAX_LEN + 1)
+        program->symbols[i].name[ident_len] = '\0';
+    else
+        program->symbols[i].name[HORIZON_IDENT_MAX_LEN] = '\0';
+
+    program->symbols[i].value = value;
+    program->symbols[i].type = type;
+
+    printf("%s = %u\n", program->symbols[i].name, program->symbols[i].value);
+    program->len_symbols++;
+
+    return 0;
+}
 
 // Initilizes all regex used by the parser
 int ho_init_regex()
@@ -420,10 +396,10 @@ int ho_match_identifier(uint32_t *dest, char **buf)
         return ERR_NO_MATCH;
 
     int len = match.rm_eo - match.rm_so;
-    if (len > 255)
+    if (len > HORIZON_IDENT_MAX_LEN)
         return ERR_IDENT_TOO_LONG;
 
-    char word[256] = { 0 };
+    char word[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
     strncpy(word, *buf, len);
 
     if (ho_is_reserved(word))
@@ -542,10 +518,8 @@ int ho_match_error(char **buf)
 {
     while (**buf != '\n' && **buf != '\0')
     {
-        putchar(**buf);
         (*buf)++;
     }
-    printf("\n\n");
     return ho_match_newline(buf);
 }
 
@@ -995,9 +969,51 @@ int ho_parse_value_list(program_t *program, char **buf)
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_directive(program_t *program, char **buf)
+int ho_parse_directive(program_t *program, int *lines_consumed, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    int res = 0;
+    uint32_t dirnum = HO_DIR_NONE;
+
+    res = ho_match_directive(&dirnum, buf);
+    if (res == ERR_NO_MATCH)
+        return res;
+
+    uint32_t len = 0;
+    char ident[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
+    uint32_t value = 0;
+    switch (dirnum)
+    {
+        case HO_CONST:
+            // read identifier
+            ho_match_whitespace(buf);
+            res = ho_match_identifier(&len, buf);
+            if (res == ERR_NO_MATCH)
+                return ERR_EXPECTED_IDENT;
+            if (res != NO_ERR)
+                return res;
+
+            // check if appropriate
+            strncpy(ident, *buf, len);
+            if (ho_symbol_exists(*program, ident))
+                return ERR_REDEFINED_IDENT;
+
+            // if so, define with the value of literal
+            *buf += len;
+            ho_match_whitespace(buf);
+            res = ho_match_literal(&value, buf);
+            if (res == ERR_NO_MATCH)
+                return ERR_EXPECTED_LITERAL;
+            if (res != NO_ERR)
+                return res;
+            ho_add_symbol(program, ident, value, HO_SYM_CONST);
+            break;
+        default:
+            printf("Error ???\n");
+            return -1;
+            break;
+    }
+
+    return NO_ERR;
 }
 
 int ho_parse_label(program_t *program, char **buf)
@@ -1050,44 +1066,67 @@ int ho_parse_instruction(program_t *program, char **buf)
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_statement(program_t *program, char **buf)
+int ho_parse_statement(program_t *program, int *lines_consumed, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    int retval = NO_ERR;
+    program->error_count = 0;
+
+    *lines_consumed = 0;
+    retval = ho_parse_directive(program, lines_consumed, buf);
+
+    if (retval != NO_ERR)
+        return retval;
+
+    return retval;
 }
 
 
 // Print an error message for a parser error
-void ho_parser_perror(char *msg, int error)
+void ho_parser_perror(char *msg, int error, int line)
 {
+    if (error == NO_ERR)
+        return;
+
+    printf("Error on line %d: ", line);
+
     switch (error)
     {
-    case NO_ERR:
-        break;
-    case ERR_NO_MATCH:
-        printf("%s: no match found\n", msg);
-        break;
-    case ERR_OUT_OF_RANGE_8:
-        printf("%s: number out of range (less than %d or greater than %u)\n", msg, INT8_MIN, UINT8_MAX);
-        break;
-    case ERR_OUT_OF_RANGE_16:
-        printf("%s: number out of range (less than %d or greater than %u)\n", msg, INT16_MIN, UINT16_MAX);
-        break;
-    case ERR_OUT_OF_RANGE_32:
-        printf("%s: number out of range (less than %d or greater than %u)\n", msg, INT32_MIN, UINT32_MAX);
-        break;
-    case ERR_UNEXPECTED_NL:
-        printf("%s: unexpected newline\n", msg);
-        break;
-    case ERR_EOF:
-        printf("%s: found EOF\n", msg);
-        break;
-    case ERR_IDENT_TOO_LONG:
-        printf("%s: identifier too long (max 255 characters)\n", msg);
-        break;
-    case ERR_RESERVED_WORD:
-        printf("%s: cannot use reserved word as identifier\n", msg);
-        break;
+        case ERR_NO_MATCH:
+            printf("no match found");
+            break;
+        case ERR_OUT_OF_RANGE_8:
+            printf("number out of range (less than %d or greater than %u)", INT8_MIN, UINT8_MAX);
+            break;
+        case ERR_OUT_OF_RANGE_16:
+            printf("number out of range (less than %d or greater than %u)", INT16_MIN, UINT16_MAX);
+            break;
+        case ERR_OUT_OF_RANGE_32:
+            printf("number out of range (less than %d or greater than %u)", INT32_MIN, UINT32_MAX);
+            break;
+        case ERR_UNEXPECTED_NL:
+            printf("unexpected newline");
+            break;
+        case ERR_EOF:
+            printf("found EOF");
+            break;
+        case ERR_IDENT_TOO_LONG:
+            printf("identifier too long (max 255 characters)");
+            break;
+        case ERR_RESERVED_WORD:
+            printf("cannot use reserved word as identifier");
+            break;
+        case ERR_REDEFINED_IDENT:
+            printf("redefined identifier");
+            break;
+        case ERR_EXPECTED_IDENT:
+            printf("expected an identifier");
+            break;
+        case ERR_EXPECTED_LITERAL:
+            printf("expected a literal");
+            break;
     }
+
+    printf("\n%s%s\n", (msg) ? msg : "", (msg && strlen(msg) != 0) ? "\n" : "");
 }
 
 // Returns 1 if the word string is a reserved word, and 0 if not
