@@ -6,30 +6,14 @@
 typedef struct {
     char *name;
     uint32_t value;
+
     int type;
+    int length;
 } symbol_t;
 
 #define ARCH_OVERTURE   0
 // Everest would be 1
 #define ARCH_HORIZON    2
-
-typedef struct {
-    int arch;
-
-    int len_symbols;
-    int len_symbols_space;
-    symbol_t *symbols;      // malloced
-
-    char *lines_buf;        // malloced
-    int len_lines;
-    char **lines;           // malloced, references lines_buf
-    int *line_executable;   // malloced
-
-    int len_code;
-    int64_t *code;          // malloced
-
-    int error_count;
-} program_t;
 
 typedef struct {
     int line;

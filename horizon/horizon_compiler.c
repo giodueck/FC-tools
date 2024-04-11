@@ -8,18 +8,18 @@
 #include "../fcerrors.h"
 
 // Parse program to build the symbol table and check for errors
-// Returns the pointer to a newly allocated program_t
+// Returns the pointer to a newly allocated horizon_program_t
 // If there are any errors, they will be added to the err_array, as many as
-// err_array_size allows. The program_t return will have the total error count.
+// err_array_size allows. The horizon_program_t return will have the total error count.
 // After running horizon_parse, run horizon_free on the pointer to free its
 // allocated memory, regardless of if the program was error-free or not.
-program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
+horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
 {
     fseek(fd, 0, SEEK_END);
     int size = ftell(fd);
     rewind(fd);
 
-    program_t program = { ARCH_HORIZON };
+    horizon_program_t program = { ARCH_HORIZON };
     char *program_buf = malloc(size + 1);
 
     program.lines_buf = program_buf;
@@ -37,10 +37,17 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
     program.symbols = malloc(sizeof(symbol_t) * symbol_space);
     program.len_symbols_space = symbol_space;
 
+    int data_space = 100;
+    program.data = malloc(sizeof(uint32_t) * data_space);
+    program.len_data_space = data_space;
+
+    // Account for the initial start instruction
+    program.data_offset = 1;
+
     uint32_t num;
     int retval;
 
-    ho_add_symbol(&program, "RAM", 1234, HO_SYM_CONST);
+    // ho_add_symbol(&program, "RAM", 1234, HO_SYM_CONST);
     int line = 1;
     while (retval != ERR_EOF)
     {
@@ -67,14 +74,14 @@ program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_size)
 
     printf("unparsed text: %s\n", program_buf);
 
-    program_t *ret = malloc(sizeof(program_t));
+    horizon_program_t *ret = malloc(sizeof(horizon_program_t));
     *ret = program;
     return ret;
 }
 
 
 // Frees memory allocated by horizon_parse
-void horizon_free(program_t *program)
+void horizon_free(horizon_program_t *program)
 {
     if (!program)
         return;
@@ -87,6 +94,8 @@ void horizon_free(program_t *program)
     }
     if (program->symbols)
         free(program->symbols);
+    if (program->data)
+        free(program->data);
     free(program);
     return;
 }

@@ -5,19 +5,45 @@
 #include <stdint.h>
 #include "../program.h"
 
-#define ERR_NO_MATCH            100
-#define ERR_OUT_OF_RANGE_8      101
-#define ERR_OUT_OF_RANGE_16     102
-#define ERR_OUT_OF_RANGE_32     103
-#define ERR_UNEXPECTED_NL       104
-#define ERR_EOF                 105
-#define ERR_IDENT_TOO_LONG      106
-#define ERR_RESERVED_WORD       107
-#define ERR_REDEFINED_IDENT     108
-#define ERR_EXPECTED_IDENT      109
-#define ERR_EXPECTED_LITERAL    110
+#define ERR_NO_MATCH                    100
+#define ERR_OUT_OF_RANGE_8              101
+#define ERR_OUT_OF_RANGE_16             102
+#define ERR_OUT_OF_RANGE_32             103
+#define ERR_UNEXPECTED_NL               104
+#define ERR_EOF                         105
+#define ERR_IDENT_TOO_LONG              106
+#define ERR_RESERVED_WORD               107
+#define ERR_REDEFINED_IDENT             108
+#define ERR_EXPECTED_IDENT              109
+#define ERR_EXPECTED_LITERAL            110
+#define ERR_EXPECTED_CONST_OR_LITERAL   111
+#define ERR_ILLEGAL_DATA_DIRECTIVE      112
 
 #define HORIZON_IDENT_MAX_LEN 255
+
+typedef struct {
+    int arch;
+
+    int len_symbols;
+    int len_symbols_space;
+    symbol_t *symbols;      // malloced
+
+    // Variables
+    int data_offset;        // for var and array directives
+    int len_data;
+    int len_data_space;
+    uint32_t *data;         // malloced
+
+    char *lines_buf;        // malloced
+    int len_lines;
+
+    int code_offset;        // for labels
+    int code_start;         // for the initial jmp start instruction
+    int len_code;
+    int64_t *code;          // malloced
+
+    int error_count;
+} horizon_program_t;
 
 struct horizon_regex_t {
     regex_t literal_re;
@@ -125,25 +151,25 @@ int ho_match_mem(uint32_t *dest, char **buf);
 // Parse means this is a rule in the grammar
 // Return values are errors
 
-int ho_parse_value(program_t *program, char **buf);
-int ho_parse_value_list(program_t *program, char **buf);
-int ho_parse_directive(program_t *program, int *lines_consumed, char **buf);
-int ho_parse_label(program_t *program, char **buf);
-int ho_parse_format_2(program_t *program, char **buf);
-int ho_parse_format_3(program_t *program, char **buf);
-int ho_parse_format_4(program_t *program, char **buf);
-int ho_parse_format_5(program_t *program, char **buf);
-int ho_parse_alu(program_t *program, char **buf);
-int ho_parse_ram(program_t *program, char **buf);
-int ho_parse_cond(program_t *program, char **buf);
-int ho_parse_push(program_t *program, char **buf);
-int ho_parse_instruction(program_t *program, char **buf);
-int ho_parse_statement(program_t *program, int *lines_consumed, char **buf);
+int ho_parse_value(horizon_program_t *program, uint32_t *dest, char **buf);
+int ho_parse_value_list(horizon_program_t *program, uint32_t **dest_list, int len, char **buf);
+int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **buf);
+int ho_parse_label(horizon_program_t *program, char **buf);
+int ho_parse_format_2(horizon_program_t *program, char **buf);
+int ho_parse_format_3(horizon_program_t *program, char **buf);
+int ho_parse_format_4(horizon_program_t *program, char **buf);
+int ho_parse_format_5(horizon_program_t *program, char **buf);
+int ho_parse_alu(horizon_program_t *program, char **buf);
+int ho_parse_ram(horizon_program_t *program, char **buf);
+int ho_parse_cond(horizon_program_t *program, char **buf);
+int ho_parse_push(horizon_program_t *program, char **buf);
+int ho_parse_instruction(horizon_program_t *program, char **buf);
+int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **buf);
 
 // Helper functions
 
-int ho_symbol_exists(program_t program, const char *token);
-int ho_add_symbol(program_t *program, const char *ident, uint32_t value, int type);
+int ho_symbol_exists(horizon_program_t program, const char *token);
+int ho_add_symbol(horizon_program_t *program, const char *ident, uint32_t value, int type);
 void ho_parser_perror(char *msg, int error, int line);
 int ho_is_reserved(const char *word);
 int ho_is_reserved_ident(const char *ident);

@@ -6,8 +6,8 @@ statement   : instruction
             ;
 
 directive   : .const identifier literal
-            | .var identifier = value
-            | .array identifier [ value ] = { value-list }
+            | .var identifier value
+            | .array identifier [ value ] { value-list }
             | .start
             | .name comment
             | .desc comment-series

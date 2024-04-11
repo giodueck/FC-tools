@@ -8,7 +8,7 @@
 #include "overture_compiler.h"
 #include "../program.h"
 
-static program_t program = { 0 };
+static overture_program_t program = { 0 };
 static int error_count = 0;
 
 static overture_register_map_t reg = { 0 };

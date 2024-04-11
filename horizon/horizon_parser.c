@@ -95,9 +95,9 @@ const char *horizon_reserved[] = {
     "NIL"
 };
 
-const char *horizon_reserved_ident[] = {
-    "RAM"
-};
+// const char *horizon_reserved_ident[] = {
+//     "RAM"
+// };
 
 // Print an error message
 void ho_syntax_error(const char *message, int line_minus_one)
@@ -106,7 +106,7 @@ void ho_syntax_error(const char *message, int line_minus_one)
 }
 
 // Check if an identifier has already been defined
-int ho_symbol_exists(program_t program, const char *token)
+int ho_symbol_exists(horizon_program_t program, const char *token)
 {
     for (int i = 0; i < program.len_symbols; i++)
     {
@@ -116,13 +116,26 @@ int ho_symbol_exists(program_t program, const char *token)
     return 0;
 }
 
+int ho_get_symbol(horizon_program_t program, symbol_t *dest, const char *token)
+{
+    for (int i = 0; i < program.len_symbols; i++)
+    {
+        if (strcmp(token, program.symbols[i].name) == 0)
+        {
+            *dest = program.symbols[i];
+            return 1;
+        }
+    }
+    return 0;
+}
+
 // Define a new symbol
-int ho_add_symbol(program_t *program, const char *ident, uint32_t value, int type)
+int ho_add_symbol(horizon_program_t *program, const char *ident, uint32_t value, int type)
 {
     int i = program->len_symbols;
     int ident_len = strlen(ident);
 
-    if (program->len_symbols_space >= i)
+    if (program->len_symbols_space <= i)
     {
         program->len_symbols_space += 100;
         program->symbols = realloc(program->symbols, sizeof(symbol_t) * program->len_symbols_space);
@@ -140,7 +153,25 @@ int ho_add_symbol(program_t *program, const char *ident, uint32_t value, int typ
     program->symbols[i].type = type;
 
     printf("%s = %u\n", program->symbols[i].name, program->symbols[i].value);
+    if (type == HO_SYM_VAR)
+    {
+        printf("  value = %u\n", program->data[value - program->data_offset]);
+    }
     program->len_symbols++;
+
+    return 0;
+}
+
+// Define a new symbol
+int ho_add_data(horizon_program_t *program, uint32_t value)
+{
+    if (program->len_data >= program->len_data_space)
+    {
+        program->len_data_space += 100;
+        program->data = realloc(program->data, sizeof(uint32_t) * program->len_data_space);
+    }
+
+    program->data[program->len_data++] = value;
 
     return 0;
 }
@@ -223,7 +254,7 @@ int ho_match_literal(uint32_t *dest, char **buf)
     regmatch_t match;
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
-    if (ret != 0)
+    if (ret != 0 || **buf < '0' || **buf > '9')
         return ERR_NO_MATCH;
 
     char *endptr = NULL;
@@ -958,18 +989,48 @@ int ho_match_mem(uint32_t *dest, char **buf)
     return ERR_NO_MATCH;
 }
 
+// Places the value into dest
+int ho_parse_value(horizon_program_t *program, uint32_t *dest, char **buf)
+{
+    int res = 0;
+    uint32_t val = 0;
+    char ident[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
+    symbol_t symbol = { 0 };
 
-int ho_parse_value(program_t *program, char **buf)
+    // Try reading a literal first
+    res = ho_match_literal(&val, buf);
+    if (res == ERR_NO_MATCH)
+        goto ho_parse_value_try_ident;
+    if (res != NO_ERR)
+        return res;
+
+    *dest = val;
+    return NO_ERR;
+
+ho_parse_value_try_ident:
+    // Try reading an identifier (has to be a const)
+    res = ho_match_identifier(&val, buf);
+    if (res == ERR_NO_MATCH)
+        return ERR_EXPECTED_CONST_OR_LITERAL;
+    if (res != NO_ERR)
+        return res;
+
+    // check if const
+    strncpy(ident, *buf, val);
+    if (!ho_get_symbol(*program, &symbol, ident) || symbol.type != HO_SYM_CONST)
+        return ERR_EXPECTED_CONST_OR_LITERAL;
+
+    *dest = symbol.value;
+    *buf += val;    // advance buffer
+    return NO_ERR;
+}
+
+int ho_parse_value_list(horizon_program_t *program, uint32_t **dest_list, int len, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_value_list(program_t *program, char **buf)
-{
-    return ERR_NOT_IMPLEMENTED;
-}
-
-int ho_parse_directive(program_t *program, int *lines_consumed, char **buf)
+int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **buf)
 {
     int res = 0;
     uint32_t dirnum = HO_DIR_NONE;
@@ -1007,6 +1068,33 @@ int ho_parse_directive(program_t *program, int *lines_consumed, char **buf)
                 return res;
             ho_add_symbol(program, ident, value, HO_SYM_CONST);
             break;
+        case HO_VAR:
+            // if instructions have already been parsed, this directive is illegal
+            if (program->len_code)
+                return ERR_ILLEGAL_DATA_DIRECTIVE;
+
+            // read identifier
+            ho_match_whitespace(buf);
+            res = ho_match_identifier(&len, buf);
+            if (res == ERR_NO_MATCH)
+                return ERR_EXPECTED_IDENT;
+            if (res != NO_ERR)
+                return res;
+
+            // check if appropriate
+            strncpy(ident, *buf, len);
+            if (ho_symbol_exists(*program, ident))
+                return ERR_REDEFINED_IDENT;
+
+            // if so, add the value
+            *buf += len;
+            ho_match_whitespace(buf);
+            res = ho_parse_value(program, &value, buf);
+            if (res != NO_ERR)
+                return res;
+            ho_add_data(program, value);
+            ho_add_symbol(program, ident, program->len_data - 1 + program->data_offset, HO_SYM_VAR);
+            break;
         default:
             printf("Error ???\n");
             return -1;
@@ -1016,57 +1104,57 @@ int ho_parse_directive(program_t *program, int *lines_consumed, char **buf)
     return NO_ERR;
 }
 
-int ho_parse_label(program_t *program, char **buf)
+int ho_parse_label(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_format_2(program_t *program, char **buf)
+int ho_parse_format_2(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_format_3(program_t *program, char **buf)
+int ho_parse_format_3(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_format_4(program_t *program, char **buf)
+int ho_parse_format_4(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_format_5(program_t *program, char **buf)
+int ho_parse_format_5(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_alu(program_t *program, char **buf)
+int ho_parse_alu(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_ram(program_t *program, char **buf)
+int ho_parse_ram(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_cond(program_t *program, char **buf)
+int ho_parse_cond(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_push(program_t *program, char **buf)
+int ho_parse_push(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_instruction(program_t *program, char **buf)
+int ho_parse_instruction(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }
 
-int ho_parse_statement(program_t *program, int *lines_consumed, char **buf)
+int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **buf)
 {
     int retval = NO_ERR;
     program->error_count = 0;
@@ -1116,13 +1204,19 @@ void ho_parser_perror(char *msg, int error, int line)
             printf("cannot use reserved word as identifier");
             break;
         case ERR_REDEFINED_IDENT:
-            printf("redefined identifier");
+            printf("identifier was already defined");
             break;
         case ERR_EXPECTED_IDENT:
             printf("expected an identifier");
             break;
         case ERR_EXPECTED_LITERAL:
-            printf("expected a literal");
+            printf("expected a literal value");
+            break;
+        case ERR_EXPECTED_CONST_OR_LITERAL:
+            printf("expected a literal or constant value");
+            break;
+        case ERR_ILLEGAL_DATA_DIRECTIVE:
+            printf("var and array directives must be defined before any instructions");
             break;
     }
 
@@ -1140,13 +1234,13 @@ int ho_is_reserved(const char *word)
     return 0;
 }
 
-// Returns 1 if the word string is a reserved identifier, and 0 if not
-int ho_is_reserved_ident(const char *ident)
-{
-    for (int i = 0; i < sizeof(horizon_reserved_ident)/sizeof(char*); i++)
-    {
-        if (strcmp(ident, horizon_reserved_ident[i]) == 0)
-            return 1;
-    }
-    return 0;
-}
+// // Returns 1 if the word string is a reserved identifier, and 0 if not
+// int ho_is_reserved_ident(const char *ident)
+// {
+//     for (int i = 0; i < sizeof(horizon_reserved_ident)/sizeof(char*); i++)
+//     {
+//         if (strcmp(ident, horizon_reserved_ident[i]) == 0)
+//             return 1;
+//     }
+//     return 0;
+// }

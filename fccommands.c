@@ -137,11 +137,9 @@ void parse_and_run(FILE *fd, int arch)
         overture_quit();
     } else if (arch == ARCH_HORIZON)
     {
-        program_t *program = horizon_parse(fd, NULL, 0);
+        horizon_program_t *program = horizon_parse(fd, NULL, 0);
         for (int i = 0; i < program->len_lines; i++)
         {
-            if (program->line_executable[i])
-                printf("%s\n", program->lines[i]);
         }
         horizon_free(program);
     } else

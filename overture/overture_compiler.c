@@ -7,7 +7,7 @@
 #include "overture_compiler.h"
 #include "../program.h"
 
-static program_t program = { 0 };
+static overture_program_t program = { 0 };
 static char *program_buf = NULL;
 
 static regex_t label            = { 0 };
@@ -316,7 +316,7 @@ void overture_free()
     free(program.symbols);
     free(program.lines);
     free(program.line_executable);
-    program = (program_t) { 0 };
+    program = (overture_program_t) { 0 };
 
     free(program.code);
 }
@@ -351,7 +351,7 @@ void overture_quit()
 // Returns the parsed program structure
 // Note: this is still malloced memory, and calling overture_free will free it.
 // Make sure not to use the program after it has been freed
-program_t overture_get_program()
+overture_program_t overture_get_program()
 {
     return program;
 }

@@ -5,6 +5,23 @@
 
 #include "../program.h"
 
+typedef struct {
+    int arch;
+
+    int len_symbols;
+    symbol_t *symbols;      // malloced
+
+    char *lines_buf;        // malloced
+    int len_lines;
+    char **lines;           // malloced, references lines_buf
+    int *line_executable;   // malloced
+
+    int len_code;
+    int64_t *code;          // malloced
+
+    int error_count;
+} overture_program_t;
+
 enum machine_code_def {
 ADD = 64,
 SUB = 65,
@@ -45,7 +62,7 @@ void overture_quit();
 // Returns the parsed program structure
 // Note: this is still malloced memory, and calling overture_free will free it.
 // Make sure not to use the program after it has been freed
-program_t overture_get_program();
+overture_program_t overture_get_program();
 
 
 #endif // OVERTURE_COMPILER_H

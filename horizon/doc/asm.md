@@ -20,7 +20,7 @@ when starting with `0`, or base 10 when starting with any other digit.
 ### Var
 The `.var` directive is used like so:
 ```
-.var identifier = value
+.var identifier value
 ```
 where `identifier` is as defined above, and `value` is either a literal as defined
 above or a `.const` identifier.
@@ -28,10 +28,13 @@ above or a `.const` identifier.
 This identifier then acts as a pointer to a single memory address, which contains the
 value.
 
+This directive may only appear before all instructions, as program data is placed
+before instruction data.
+
 ### Array
 The `.array` directive is used like so:
 ```
-.array identifier [ value ] = { value-list }
+.array identifier [ value ] { value-list }
 ```
 where `identifier` is as defined above, `value` is as defined above, and `value-list`
 is a comma-separated list of `value`s.
@@ -40,6 +43,9 @@ This identifier then acts like a pointer to an array in memory, with `value` ite
 The `value-list` may be up to `value` items long, and these are the values the array
 is initialized to. If the list is shorter than `value` specifies, the missing values
 are assumed to be zero and initialized as such.
+
+This directive may only appear before all instructions, as program data is placed
+before instruction data.
 
 ### Start
 The `.start` directive is used like so:
@@ -87,9 +93,3 @@ Labels are as they were previously:
 identifier:
 ```
 where `identifier` is as defined above.
-
-## Reserved identifiers
-### RAM
-The `ram` identifier is reserved: it cannot be defined but can be referenced as a
-constant. It points to the address after the last instruction in the program, i.e.
-freely usable memory.
