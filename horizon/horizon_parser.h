@@ -48,6 +48,9 @@ typedef struct {
     int code_offset;        // for labels
     int code_start;         // for the initial jmp start instruction
     int len_code;
+    char **code_lines;      // malloced, array of pointers to lines in the lines_buf, ending in '\n'
+                            //  these lines must be parsed in the second pass to allow using labels defined
+                            //  later
     int64_t *code;          // malloced
 
     int error_count;
@@ -130,6 +133,7 @@ enum horizon_directive {
 enum horizon_symbol_type {
     HO_SYM_CONST,
     HO_SYM_VAR,
+    HO_SYM_LABEL_UNDEFINED,
     HO_SYM_LABEL,
 };
 

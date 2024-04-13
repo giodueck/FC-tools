@@ -1202,8 +1202,7 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
             free(array);
             break;
         default:
-            printf("Error ???\n");
-            return -1;
+            return ERR_NOT_IMPLEMENTED;
             break;
     }
 
@@ -1212,6 +1211,15 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
 
 int ho_parse_label(horizon_program_t *program, char **buf)
 {
+    // get an identifier
+    // check if defined
+        // if not in the symbol table, add it
+        // if in the symbol table but undefined, add definition
+        // else return error
+
+    char ident[HORIZON_IDENT_MAX_LEN + 1];
+
+
     return ERR_NOT_IMPLEMENTED;
 }
 
@@ -1270,8 +1278,11 @@ int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **b
 
     // go to next rule right side
     if (retval == ERR_NO_MATCH)
-        goto ho_parse_statement_empty_line;
+        goto ho_parse_statement_label;
     return retval;
+
+ho_parse_statement_label:
+    retval = ho_parse_label(program, buf);
 
 ho_parse_statement_empty_line:
     return NO_ERR;
@@ -1288,6 +1299,9 @@ void ho_parser_perror(char *msg, int error, int line)
 
     switch (error)
     {
+        case ERR_NOT_IMPLEMENTED:
+            printf("not implemented yet");
+            break;
         case ERR_NO_MATCH:
             printf("no match found");
             break;
