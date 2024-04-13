@@ -18,6 +18,14 @@
 #define ERR_EXPECTED_LITERAL            110
 #define ERR_EXPECTED_CONST_OR_LITERAL   111
 #define ERR_ILLEGAL_DATA_DIRECTIVE      112
+#define ERR_EXPECTED_NON_ZERO           113
+#define ERR_TOO_MANY_VALUES             114
+#define ERR_EXPECTED_OPEN_P             115
+#define ERR_EXPECTED_CLOSE_P            116
+#define ERR_EXPECTED_OPEN_B             117
+#define ERR_EXPECTED_CLOSE_B            118
+#define ERR_EXPECTED_OPEN_CB            119
+#define ERR_EXPECTED_CLOSE_CB           120
 
 #define HORIZON_IDENT_MAX_LEN 255
 
@@ -139,6 +147,7 @@ int ho_match_directive(uint32_t *dest, char **buf);
 int ho_match_whitespace(char **buf);
 int ho_match_newline(char **buf);
 int ho_match_comment(char **buf);
+int ho_match_string(const char *str, char **buf);
 int ho_match_error(char **buf);
 
 int ho_match_noop(uint32_t *dest, char **buf);

@@ -183,7 +183,7 @@ int ho_init_regex()
     if (reret == INT_MAX)
     {
         // Match only the literal, which must be at the beginning of the string
-        reret = regcomp(&horizon_regex.literal_re, "^[\\(0x[:xdigit:]\\{1,\\}\\)\\(-\\{0,1\\}[:digit:]\\{1,\\}\\)]", REG_ICASE);
+        reret = regcomp(&horizon_regex.literal_re, "^[-\\{0,1\\}\\(0x[:xdigit:]\\{1,\\}\\)\\([:digit:]\\{1,\\}\\)]", REG_ICASE);
         if (reret)
         {
             char errbuf[BUFSIZ] = "";
@@ -254,7 +254,7 @@ int ho_match_literal(uint32_t *dest, char **buf)
     regmatch_t match;
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
-    if (ret != 0 || **buf < '0' || **buf > '9')
+    if (ret != 0)
         return ERR_NO_MATCH;
 
     char *endptr = NULL;
@@ -511,6 +511,18 @@ int ho_match_whitespace(char **buf)
     while (**buf == ' ' || **buf == '\t')
         (*buf)++;
     return NO_ERR;
+}
+
+// Match a sequence of characters
+int ho_match_string(const char *str, char **buf)
+{
+    int len = strlen(str);
+    if (strncmp(str, *buf, len) == 0)
+    {
+        *buf += len;
+        return NO_ERR;
+    } else
+        return ERR_NO_MATCH;
 }
 
 // Match a single newline character, preceded and followed optionally by whitespace
@@ -1027,7 +1039,29 @@ ho_parse_value_try_ident:
 
 int ho_parse_value_list(horizon_program_t *program, uint32_t **dest_list, int len, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    int idx = 0;
+    int retval;
+
+    int repeat = 0;
+    do
+    {
+        if (idx >= len)
+            return ERR_TOO_MANY_VALUES;
+        retval = ho_parse_value(program, &(*dest_list)[idx], buf);
+        if (retval != NO_ERR)
+            return retval;
+
+        ho_match_whitespace(buf);
+        retval = ho_match_string(",", buf);
+        repeat = 0;
+        if (retval == NO_ERR)
+            repeat = 1;
+        ho_match_whitespace(buf);
+
+        idx++;
+    } while (repeat);
+
+    return NO_ERR;
 }
 
 int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **buf)
@@ -1094,6 +1128,78 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
                 return res;
             ho_add_data(program, value);
             ho_add_symbol(program, ident, program->len_data - 1 + program->data_offset, HO_SYM_VAR);
+            break;
+        case HO_ARRAY:
+            // if instructions have already been parsed, this directive is illegal
+            if (program->len_code)
+                return ERR_ILLEGAL_DATA_DIRECTIVE;
+
+            // read identifier
+            ho_match_whitespace(buf);
+            res = ho_match_identifier(&len, buf);
+            if (res == ERR_NO_MATCH)
+                return ERR_EXPECTED_IDENT;
+            if (res != NO_ERR)
+                return res;
+
+            // check if appropriate
+            strncpy(ident, *buf, len);
+            if (ho_symbol_exists(*program, ident))
+                return ERR_REDEFINED_IDENT;
+
+            // if so, add the values
+            *buf += len;
+
+            ho_match_whitespace(buf);
+            res = ho_match_string("[", buf);
+            if (res != NO_ERR)
+                return ERR_EXPECTED_OPEN_B;
+            ho_match_whitespace(buf);
+
+            uint32_t array_len = 0;
+            ho_parse_value(program, &array_len, buf);
+            if (array_len == 0)
+            {
+                return ERR_EXPECTED_NON_ZERO;
+            }
+
+            ho_match_whitespace(buf);
+            res = ho_match_string("]", buf);
+            if (res != NO_ERR)
+                return ERR_EXPECTED_CLOSE_B;
+            ho_match_whitespace(buf);
+
+            uint32_t *array = malloc(sizeof(uint32_t) * array_len);
+            for (int i = 0; i < array_len; i++)
+            {
+                array[i] = 0;
+            }
+            ho_match_whitespace(buf);
+            res = ho_match_string("{", buf);
+            if (res != NO_ERR)
+            {
+                free(array);
+                return ERR_EXPECTED_OPEN_CB;
+            }
+            ho_match_whitespace(buf);
+
+            ho_parse_value_list(program, &array, array_len, buf);
+
+            ho_match_whitespace(buf);
+            res = ho_match_string("}", buf);
+            if (res != NO_ERR)
+            {
+                free(array);
+                return ERR_EXPECTED_CLOSE_CB;
+            }
+            ho_match_whitespace(buf);
+
+            ho_add_data(program, array[0]);
+            ho_add_symbol(program, ident, program->len_data - 1 + program->data_offset, HO_SYM_VAR);
+            for (int i = 1; i < array_len; i++)
+                ho_add_data(program, array[i]);
+
+            free(array);
             break;
         default:
             printf("Error ???\n");
@@ -1162,10 +1268,13 @@ int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **b
     *lines_consumed = 0;
     retval = ho_parse_directive(program, lines_consumed, buf);
 
-    if (retval != NO_ERR)
-        return retval;
-
+    // go to next rule right side
+    if (retval == ERR_NO_MATCH)
+        goto ho_parse_statement_empty_line;
     return retval;
+
+ho_parse_statement_empty_line:
+    return NO_ERR;
 }
 
 
@@ -1217,6 +1326,27 @@ void ho_parser_perror(char *msg, int error, int line)
             break;
         case ERR_ILLEGAL_DATA_DIRECTIVE:
             printf("var and array directives must be defined before any instructions");
+            break;
+        case ERR_EXPECTED_NON_ZERO:
+            printf("expected a non-zero value");
+            break;
+        case ERR_EXPECTED_OPEN_P:
+            printf("expected (");
+            break;
+        case ERR_EXPECTED_CLOSE_P:
+            printf("expected )");
+            break;
+        case ERR_EXPECTED_OPEN_B:
+            printf("expected [");
+            break;
+        case ERR_EXPECTED_CLOSE_B:
+            printf("expected ]");
+            break;
+        case ERR_EXPECTED_OPEN_CB:
+            printf("expected {");
+            break;
+        case ERR_EXPECTED_CLOSE_CB:
+            printf("expected }");
             break;
     }
 
