@@ -152,11 +152,6 @@ int ho_add_symbol(horizon_program_t *program, const char *ident, uint32_t value,
     program->symbols[i].value = value;
     program->symbols[i].type = type;
 
-    printf("%s = %u\n", program->symbols[i].name, program->symbols[i].value);
-    if (type == HO_SYM_VAR)
-    {
-        printf("  value = %u\n", program->data[value - program->data_offset]);
-    }
     program->len_symbols++;
 
     return 0;
@@ -172,6 +167,20 @@ int ho_add_data(horizon_program_t *program, uint32_t value)
     }
 
     program->data[program->len_data++] = value;
+
+    return 0;
+}
+
+int ho_add_code_line(horizon_program_t *program, char *buf)
+{
+    if (program->len_code_lines >= program->len_code_lines_space)
+    {
+        program->len_code_lines_space += 100;
+        program->code_lines = realloc(program->code_lines, sizeof(uint32_t) * program->len_code_lines_space);
+    }
+
+    program->code_lines[program->len_code_lines] = buf;
+    program->len_code_lines++;
 
     return 0;
 }
@@ -1071,7 +1080,11 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
 
     res = ho_match_directive(&dirnum, buf);
     if (res == ERR_NO_MATCH)
+    {
+        if (*buf[0] == '.')
+            return ERR_UNKNOWN_DIRECTIVE;
         return res;
+    }
 
     uint32_t len = 0;
     char ident[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
@@ -1104,7 +1117,7 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
             break;
         case HO_VAR:
             // if instructions have already been parsed, this directive is illegal
-            if (program->len_code)
+            if (program->len_code_lines)
                 return ERR_ILLEGAL_DATA_DIRECTIVE;
 
             // read identifier
@@ -1131,7 +1144,7 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
             break;
         case HO_ARRAY:
             // if instructions have already been parsed, this directive is illegal
-            if (program->len_code)
+            if (program->len_code_lines)
                 return ERR_ILLEGAL_DATA_DIRECTIVE;
 
             // read identifier
@@ -1209,18 +1222,51 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
     return NO_ERR;
 }
 
+// Returns non-zero if there is a ':' character before the next newline or EOF
+int ho_is_label(char *buf)
+{
+    while (*buf != '\n' && *buf != '\0')
+    {
+        if (*buf == ':')
+            return 1;
+        buf++;
+    }
+    return 0;
+}
+
 int ho_parse_label(horizon_program_t *program, char **buf)
 {
     // get an identifier
-    // check if defined
-        // if not in the symbol table, add it
-        // if in the symbol table but undefined, add definition
-        // else return error
+    // if not defined, add symbol with instruction count + data length + data offset as value
 
-    char ident[HORIZON_IDENT_MAX_LEN + 1];
+    char ident[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
 
+    if (!ho_is_label(*buf))
+        return ERR_NO_MATCH;
 
-    return ERR_NOT_IMPLEMENTED;
+    uint32_t len;
+    int res = ho_match_identifier(&len, buf);
+    if (res == ERR_NO_MATCH)
+        return ERR_EXPECTED_IDENT;
+    if (res != NO_ERR)
+        return res;
+
+    // check if appropriate
+    strncpy(ident, *buf, len);
+    if (ho_symbol_exists(*program, ident))
+        return ERR_REDEFINED_IDENT;
+
+    // if so, add the label
+    *buf += len;
+
+    ho_match_whitespace(buf);
+    res = ho_match_string(":", buf);
+    if (res != NO_ERR)
+        return ERR_EXPECTED_COLON;
+
+    ho_add_symbol(program, ident, program->data_offset + program->len_data + program->len_code_lines, HO_SYM_LABEL);
+
+    return NO_ERR;
 }
 
 int ho_parse_format_2(horizon_program_t *program, char **buf)
@@ -1263,6 +1309,63 @@ int ho_parse_push(horizon_program_t *program, char **buf)
     return ERR_NOT_IMPLEMENTED;
 }
 
+// Increments program->len_code if the next line starts with an instruction
+// For the first parsing pass
+int ho_count_instruction(horizon_program_t *program, char **buf)
+{
+    int res = 0;
+
+    // If any of the instructions are matched, count up and match_error to consume the line
+    char *bufpos = *buf;
+    uint32_t opcode;
+    res = ho_match_noop(&opcode, buf);
+    if (res == NO_ERR)
+    {
+        ho_add_code_line(program, bufpos);
+        return NO_ERR;
+    }
+
+    res = ho_match_alu(&opcode, buf);
+    if (res == NO_ERR)
+    {
+        ho_add_code_line(program, bufpos);
+        return NO_ERR;
+    }
+
+    res = ho_match_not_pop(&opcode, buf);
+    if (res == NO_ERR)
+    {
+        ho_add_code_line(program, bufpos);
+        return NO_ERR;
+    }
+
+    res = ho_match_mem(&opcode, buf);
+    if (res == NO_ERR)
+    {
+        ho_add_code_line(program, bufpos);
+        return NO_ERR;
+    }
+
+    res = ho_match_cond(&opcode, buf);
+    if (res == NO_ERR)
+    {
+        ho_add_code_line(program, bufpos);
+        return NO_ERR;
+    }
+
+    res = ho_match_push(&opcode, buf);
+    if (res == NO_ERR)
+    {
+        ho_add_code_line(program, bufpos);
+        return NO_ERR;
+    }
+
+    if (res != NO_ERR)
+        return ERR_NO_MATCH;
+
+    return ERR_NOT_IMPLEMENTED;
+}
+
 int ho_parse_instruction(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
@@ -1276,16 +1379,22 @@ int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **b
     *lines_consumed = 0;
     retval = ho_parse_directive(program, lines_consumed, buf);
 
-    // go to next rule right side
-    if (retval == ERR_NO_MATCH)
-        goto ho_parse_statement_label;
-    return retval;
+    if (retval != ERR_NO_MATCH)
+        return retval;
 
-ho_parse_statement_label:
     retval = ho_parse_label(program, buf);
 
-ho_parse_statement_empty_line:
-    return NO_ERR;
+    if (retval != ERR_NO_MATCH)
+        return retval;
+
+    retval = ho_count_instruction(program, buf);
+    if (retval == ERR_NO_MATCH)
+        return ERR_UNKNOWN_INSTRUCTION;
+    // consume the line, this instruction will be parsed in the second pass
+    if (retval == NO_ERR)
+        ho_match_error(buf);
+
+    return retval;
 }
 
 
@@ -1361,6 +1470,15 @@ void ho_parser_perror(char *msg, int error, int line)
             break;
         case ERR_EXPECTED_CLOSE_CB:
             printf("expected }");
+            break;
+        case ERR_EXPECTED_COLON:
+            printf("expected :");
+            break;
+        case ERR_UNKNOWN_INSTRUCTION:
+            printf("unknown instruction");
+            break;
+        case ERR_UNKNOWN_DIRECTIVE:
+            printf("unknown directive");
             break;
     }
 

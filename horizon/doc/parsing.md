@@ -2,13 +2,13 @@
 ## First pass
 - Lexical processing
 - Error checking
-- Instruction parsing, program length determination
+- Instruction counting, program length determination
+- Directive and label parsing
 - Symbols stored in symbol table
 - Literals and constants replaced immediately
 
 ## Second pass
-- Symbol references replaced with symbol values
-- Translate instructions into machine code
+- Instruction parsing
 
 ## Third pass
 - Translate machine code into BP-string

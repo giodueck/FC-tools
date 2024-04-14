@@ -77,5 +77,5 @@ int main(int argc, char **argv)
         help(argc, argv);
     }
 
-    return ret;
+    return ret != 0;
 }

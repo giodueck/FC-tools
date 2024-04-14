@@ -8,5 +8,6 @@
 #define ERR_NO_ARG          4
 #define ERR_MISSING_OPT     5
 #define ERR_INVALID_ARG     6
+#define ERR_COMPILATION_ERR 7
 
 #endif // FC_ERROR_H

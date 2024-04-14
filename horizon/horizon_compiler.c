@@ -41,6 +41,10 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     program.data = malloc(sizeof(uint32_t) * data_space);
     program.len_data_space = data_space;
 
+    int code_lines_space = 100;
+    program.code_lines = malloc(sizeof(uint32_t) * code_lines_space);
+    program.len_code_lines_space = code_lines_space;
+
     // Account for the initial start instruction
     program.data_offset = 1;
 
@@ -61,6 +65,7 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
         retval = ho_parse_statement(&program, &lines_consumed, &program_buf);
         if (retval != NO_ERR)
         {
+            program.error_count++;
             ho_parser_perror(NULL, retval, line);
             retval = ho_match_error(&program_buf);
         } else
@@ -72,7 +77,26 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
         line++;
     }
 
-    printf("unparsed text: %s\n", program_buf);
+    printf("Symbols:\n");
+    for (int i = 0; i < program.len_symbols; i++)
+    {
+        printf("  %s = %u\n", program.symbols[i].name, program.symbols[i].value);
+        if (program.symbols[i].type == HO_SYM_VAR)
+        {
+            printf("    value = %u\n", program.data[program.symbols[i].value - program.data_offset]);
+        }
+    }
+    printf("\nUnparsed text: %s\n", program_buf);
+
+    printf("Instructions:\n");
+    for (int i = 0; i < program.len_code_lines; i++)
+    {
+        printf("  ");
+        for (int j = 0; program.code_lines[i][j] != '\n' && program.code_lines[i][j] != '\0'; j++)
+            putchar(program.code_lines[i][j]);
+        printf("\n");
+    }
+    printf("Program length: %d\n", program.len_code_lines);
 
     horizon_program_t *ret = malloc(sizeof(horizon_program_t));
     *ret = program;
@@ -96,6 +120,8 @@ void horizon_free(horizon_program_t *program)
         free(program->symbols);
     if (program->data)
         free(program->data);
+    if (program->code_lines)
+        free(program->code_lines);
     free(program);
     return;
 }

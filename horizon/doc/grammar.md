@@ -30,6 +30,11 @@ value-list  : value , value-list
             | value
             ;
 
-// TODO
-instruction ;
+instruction : parse_noop
+            | parse_alu
+            | parse_not_pop
+            | parse_ram
+            | parse_cond
+            | parse_push
+            ;
 ```

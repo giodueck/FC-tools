@@ -31,7 +31,7 @@ const char *run_req_opt = "yn";
 const char *run_opt_help[] = { "Filename of the program", "Architecture: overture or horizon (default: horizon)" };
 
 // Parse and compile program, then run it
-void parse_and_run(FILE *fd, int arch);
+int parse_and_run(FILE *fd, int arch);
 
 // Run a program
 int run(int argc, char **argv)
@@ -78,13 +78,16 @@ int run(int argc, char **argv)
         return error;
     }
 
+    // Execution
     FILE *fd;
     if ((fd = fopen(filename, "r")) != NULL)
     {
-        parse_and_run(fd, arch);
+        int res = parse_and_run(fd, arch);
+        return res;
     } else
     {
         perror("run");
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
@@ -115,7 +118,7 @@ void run_help()
     }
 }
 
-void parse_and_run(FILE *fd, int arch)
+int parse_and_run(FILE *fd, int arch)
 {
     if (arch == ARCH_OVERTURE)
     {
@@ -138,6 +141,11 @@ void parse_and_run(FILE *fd, int arch)
     } else if (arch == ARCH_HORIZON)
     {
         horizon_program_t *program = horizon_parse(fd, NULL, 0);
+        if (program->error_count)
+        {
+            printf("Program contains at least %d errors, exiting\n", program->error_count);
+            return ERR_COMPILATION_ERR;
+        }
         for (int i = 0; i < program->len_lines; i++)
         {
         }
@@ -145,7 +153,10 @@ void parse_and_run(FILE *fd, int arch)
     } else
     {
         printf("Architecture not implemented yet\n");
+        return ERR_COMPILATION_ERR;
     }
+
+    return 0;
 }
 
 int compile(int argc, char **argv)

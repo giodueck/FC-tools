@@ -26,6 +26,9 @@
 #define ERR_EXPECTED_CLOSE_B            118
 #define ERR_EXPECTED_OPEN_CB            119
 #define ERR_EXPECTED_CLOSE_CB           120
+#define ERR_EXPECTED_COLON              121
+#define ERR_UNKNOWN_INSTRUCTION         122
+#define ERR_UNKNOWN_DIRECTIVE           123
 
 #define HORIZON_IDENT_MAX_LEN 255
 
@@ -47,7 +50,8 @@ typedef struct {
 
     int code_offset;        // for labels
     int code_start;         // for the initial jmp start instruction
-    int len_code;
+    int len_code_lines;
+    int len_code_lines_space;
     char **code_lines;      // malloced, array of pointers to lines in the lines_buf, ending in '\n'
                             //  these lines must be parsed in the second pass to allow using labels defined
                             //  later
@@ -133,7 +137,6 @@ enum horizon_directive {
 enum horizon_symbol_type {
     HO_SYM_CONST,
     HO_SYM_VAR,
-    HO_SYM_LABEL_UNDEFINED,
     HO_SYM_LABEL,
 };
 
@@ -176,6 +179,7 @@ int ho_parse_alu(horizon_program_t *program, char **buf);
 int ho_parse_ram(horizon_program_t *program, char **buf);
 int ho_parse_cond(horizon_program_t *program, char **buf);
 int ho_parse_push(horizon_program_t *program, char **buf);
+int ho_count_instruction(horizon_program_t *program, char **buf);
 int ho_parse_instruction(horizon_program_t *program, char **buf);
 int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **buf);
 
