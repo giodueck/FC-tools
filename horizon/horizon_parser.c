@@ -538,6 +538,7 @@ int ho_match_string(const char *str, char **buf)
 // and optionally preceded by a comment
 int ho_match_newline(char **buf)
 {
+    ho_match_whitespace(buf);
     ho_match_comment(buf);
     if (**buf == '\n')
     {
@@ -556,11 +557,13 @@ int ho_match_newline(char **buf)
 // Match a comment without its ending newline
 int ho_match_comment(char **buf)
 {
-    ho_match_whitespace(buf);
     if (**buf == ';')
     {
         while (**buf != '\n')
             (*buf)++;
+    } else
+    {
+        return ERR_NO_MATCH;
     }
     return NO_ERR;
 }
@@ -573,6 +576,16 @@ int ho_match_error(char **buf)
         (*buf)++;
     }
     return ho_match_newline(buf);
+}
+
+// Match anything until the next newline, then return
+int ho_match_error_no_nl(char **buf)
+{
+    while (**buf != '\n' && **buf != '\0')
+    {
+        (*buf)++;
+    }
+    return NO_ERR;
 }
 
 
@@ -1231,6 +1244,9 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
 
             free(array);
             break;
+        case HO_START:
+            program->code_start = program->len_code_lines;
+            break;
         default:
             return ERR_NOT_IMPLEMENTED;
             break;
@@ -1410,7 +1426,7 @@ int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **b
         return ERR_UNKNOWN_INSTRUCTION;
     // consume the line, this instruction will be parsed in the second pass
     if (retval == NO_ERR)
-        ho_match_error(buf);
+        ho_match_error_no_nl(buf);
 
     return retval;
 }
@@ -1500,6 +1516,9 @@ void ho_parser_perror(char *msg, int error, int line)
             break;
         case ERR_UNKNOWN_DIRECTIVE:
             printf("unknown directive");
+            break;
+        case ERR_TOO_MANY_ARGUMENTS:
+            printf("got more arguments than expected");
             break;
         default:
             printf("%d", error);

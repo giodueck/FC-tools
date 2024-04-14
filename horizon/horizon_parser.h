@@ -29,6 +29,7 @@
 #define ERR_EXPECTED_COLON              121
 #define ERR_UNKNOWN_INSTRUCTION         122
 #define ERR_UNKNOWN_DIRECTIVE           123
+#define ERR_TOO_MANY_ARGUMENTS          124
 
 #define HORIZON_IDENT_MAX_LEN 255
 

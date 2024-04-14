@@ -71,6 +71,11 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
         } else
         {
             retval = ho_match_newline(&program_buf);
+            if (retval == ERR_NO_MATCH)
+            {
+                ho_parser_perror(NULL, ERR_TOO_MANY_ARGUMENTS, line);
+                retval = ho_match_error(&program_buf);
+            }
         }
 
         line += lines_consumed;
@@ -97,6 +102,7 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
         printf("\n");
     }
     printf("Program length: %d\n", program.len_code_lines);
+    printf("Program start instruction: %d\n", program.code_start);
 
     horizon_program_t *ret = malloc(sizeof(horizon_program_t));
     *ret = program;
