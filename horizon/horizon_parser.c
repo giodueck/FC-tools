@@ -1010,7 +1010,10 @@ int ho_match_mem(uint32_t *dest, char **buf)
     return ERR_NO_MATCH;
 }
 
-// Places the value into dest
+// Parses a value and places it into dest
+// Expects the tokens:
+//  literal
+//  identifiers // which must be a constant
 int ho_parse_value(horizon_program_t *program, uint32_t *dest, char **buf)
 {
     int res = 0;
@@ -1046,6 +1049,12 @@ ho_parse_value_try_ident:
     return NO_ERR;
 }
 
+// Parses a comma-separated list of values, which is at most len elements long, but
+// can be shorter. If shorter, the non-specified values are set to 0 as in C. The
+// list is set in the dest_list array.
+// Expects the tokens:
+//  value, ',', value_list
+//  value
 int ho_parse_value_list(horizon_program_t *program, uint32_t **dest_list, int len, char **buf)
 {
     int idx = 0;
@@ -1073,6 +1082,9 @@ int ho_parse_value_list(horizon_program_t *program, uint32_t **dest_list, int le
     return NO_ERR;
 }
 
+// Parses a directive
+// Expects the tokens:
+//  .directive_name {directive_args...}
 int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **buf)
 {
     int res = 0;
@@ -1170,11 +1182,11 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
             ho_match_whitespace(buf);
 
             uint32_t array_len = 0;
-            ho_parse_value(program, &array_len, buf);
+            res = ho_parse_value(program, &array_len, buf);
+            if (res != NO_ERR)
+                return res;
             if (array_len == 0)
-            {
                 return ERR_EXPECTED_NON_ZERO;
-            }
 
             ho_match_whitespace(buf);
             res = ho_match_string("]", buf);
@@ -1196,7 +1208,12 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
             }
             ho_match_whitespace(buf);
 
-            ho_parse_value_list(program, &array, array_len, buf);
+            res = ho_parse_value_list(program, &array, array_len, buf);
+            if (res != NO_ERR)
+            {
+                free(array);
+                return res;
+            }
 
             ho_match_whitespace(buf);
             res = ho_match_string("}", buf);
@@ -1222,32 +1239,24 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
     return NO_ERR;
 }
 
-// Returns non-zero if there is a ':' character before the next newline or EOF
-int ho_is_label(char *buf)
-{
-    while (*buf != '\n' && *buf != '\0')
-    {
-        if (*buf == ':')
-            return 1;
-        buf++;
-    }
-    return 0;
-}
-
+// Parses a label
+// If the line ends with ':', stores the identifier with the number of instructions
+// counted so far as the value.
+// Expects the tokens:
+//  identifier, ':'
 int ho_parse_label(horizon_program_t *program, char **buf)
 {
-    // get an identifier
-    // if not defined, add symbol with instruction count + data length + data offset as value
-
     char ident[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
 
-    if (!ho_is_label(*buf))
-        return ERR_NO_MATCH;
+    // if the line ends up not being a label, to reset the buffer
+    char *line_start = *buf;
 
     uint32_t len;
     int res = ho_match_identifier(&len, buf);
     if (res == ERR_NO_MATCH)
-        return ERR_EXPECTED_IDENT;
+        return res;
+    if (res == ERR_RESERVED_WORD)
+        goto ho_parse_label_not_label;
     if (res != NO_ERR)
         return res;
 
@@ -1262,7 +1271,11 @@ int ho_parse_label(horizon_program_t *program, char **buf)
     ho_match_whitespace(buf);
     res = ho_match_string(":", buf);
     if (res != NO_ERR)
-        return ERR_EXPECTED_COLON;
+    {
+    ho_parse_label_not_label:
+        *buf = line_start;
+        return ERR_NO_MATCH;
+    }
 
     ho_add_symbol(program, ident, program->data_offset + program->len_data + program->len_code_lines, HO_SYM_LABEL);
 
@@ -1371,6 +1384,9 @@ int ho_parse_instruction(horizon_program_t *program, char **buf)
     return ERR_NOT_IMPLEMENTED;
 }
 
+// Parses a non-empty line, which can be an instruction, a directive or a label.
+// If it is the .desc directive, multiple lines could be consumed, so lines_consumed will
+// be set to the appropriate count, or 0 otherwise.
 int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **buf)
 {
     int retval = NO_ERR;
@@ -1379,12 +1395,14 @@ int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **b
     *lines_consumed = 0;
     retval = ho_parse_directive(program, lines_consumed, buf);
 
-    if (retval != ERR_NO_MATCH)
+    if (retval == ERR_EXPECTED_CLOSE_CB)
+        return retval;
+    if (retval == NO_ERR || retval != ERR_NO_MATCH)
         return retval;
 
     retval = ho_parse_label(program, buf);
 
-    if (retval != ERR_NO_MATCH)
+    if (retval == NO_ERR || retval != ERR_NO_MATCH)
         return retval;
 
     retval = ho_count_instruction(program, buf);
@@ -1453,6 +1471,9 @@ void ho_parser_perror(char *msg, int error, int line)
         case ERR_EXPECTED_NON_ZERO:
             printf("expected a non-zero value");
             break;
+        case ERR_TOO_MANY_VALUES:
+            printf("got more values than expected");
+            break;
         case ERR_EXPECTED_OPEN_P:
             printf("expected (");
             break;
@@ -1480,6 +1501,8 @@ void ho_parser_perror(char *msg, int error, int line)
         case ERR_UNKNOWN_DIRECTIVE:
             printf("unknown directive");
             break;
+        default:
+            printf("%d", error);
     }
 
     printf("\n%s%s\n", (msg) ? msg : "", (msg && strlen(msg) != 0) ? "\n" : "");
