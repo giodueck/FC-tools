@@ -539,7 +539,7 @@ int ho_match_string(const char *str, char **buf)
 int ho_match_newline(char **buf)
 {
     ho_match_whitespace(buf);
-    ho_match_comment(buf);
+    ho_match_comment(NULL, buf);
     if (**buf == '\n')
     {
         (*buf)++;
@@ -555,10 +555,13 @@ int ho_match_newline(char **buf)
 }
 
 // Match a comment without its ending newline
-int ho_match_comment(char **buf)
+// If dest is not null, set it to point to the first character after the ';'
+int ho_match_comment(char **dest, char **buf)
 {
     if (**buf == ';')
     {
+        if (dest)
+            *dest = *buf + 1;
         while (**buf != '\n')
             (*buf)++;
     } else
@@ -1247,6 +1250,13 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
         case HO_START:
             program->code_start = program->len_code_lines;
             break;
+        case HO_NAME:
+            ho_match_whitespace(buf);
+            res = ho_match_comment(&program->name, buf);
+            if (res == ERR_NO_MATCH)
+                return ERR_EXPECTED_COMMENT;
+            ho_match_whitespace(&program->name);
+            break;
         default:
             return ERR_NOT_IMPLEMENTED;
             break;
@@ -1519,6 +1529,9 @@ void ho_parser_perror(char *msg, int error, int line)
             break;
         case ERR_TOO_MANY_ARGUMENTS:
             printf("got more arguments than expected");
+            break;
+        case ERR_EXPECTED_COMMENT:
+            printf("expected a comment");
             break;
         default:
             printf("%d", error);

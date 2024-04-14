@@ -22,10 +22,10 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     horizon_program_t program = { ARCH_HORIZON };
     char *program_buf = malloc(size + 1);
 
-    program.lines_buf = program_buf;
+    program.input_buf = program_buf;
 
     // Read whole program in
-    program.len_lines = 0;
+    program.len_input = 0;
     fread(program_buf, 1, size, fd);
     for (int i = 0; i < size; i++)
     {
@@ -47,6 +47,9 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
 
     // Account for the initial start instruction
     program.data_offset = 1;
+
+    program.name = NULL;
+    program.desc = NULL;
 
     uint32_t num;
     int retval;
@@ -103,6 +106,15 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     }
     printf("Program length: %d\n", program.len_code_lines);
     printf("Program start instruction: %d\n", program.code_start);
+    printf("Program name:\n");
+    if (program.name)
+    {
+        printf("  ");
+        for (int i = 0; program.name[i] != '\n' && program.name[i] != '\0'; i++)
+            putchar(program.name[i]);
+        printf("\n");
+    }
+    printf("Program description: %s\n", program.desc ? program.desc : "");
 
     horizon_program_t *ret = malloc(sizeof(horizon_program_t));
     *ret = program;
@@ -115,8 +127,8 @@ void horizon_free(horizon_program_t *program)
 {
     if (!program)
         return;
-    if (program->lines_buf)
-        free(program->lines_buf);
+    if (program->input_buf)
+        free(program->input_buf);
     if (program->len_symbols)
     {
         for (int i = 0; i < program->len_symbols; i++)

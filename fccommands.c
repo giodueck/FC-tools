@@ -146,9 +146,6 @@ int parse_and_run(FILE *fd, int arch)
             printf("Program contains at least %d errors, exiting\n", program->error_count);
             return ERR_COMPILATION_ERR;
         }
-        for (int i = 0; i < program->len_lines; i++)
-        {
-        }
         horizon_free(program);
     } else
     {

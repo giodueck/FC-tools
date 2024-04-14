@@ -30,25 +30,29 @@
 #define ERR_UNKNOWN_INSTRUCTION         122
 #define ERR_UNKNOWN_DIRECTIVE           123
 #define ERR_TOO_MANY_ARGUMENTS          124
+#define ERR_EXPECTED_COMMENT            125
 
 #define HORIZON_IDENT_MAX_LEN 255
 
 typedef struct {
     int arch;
 
+    // Symbols
     int len_symbols;
     int len_symbols_space;
     symbol_t *symbols;      // malloced
 
-    // Variables
+    // Variables in RAM
     int data_offset;        // for var and array directives
     int len_data;
     int len_data_space;
     uint32_t *data;         // malloced
 
-    char *lines_buf;        // malloced
-    int len_lines;
+    // Program text
+    char *input_buf;        // malloced
+    int len_input;
 
+    // Instructions
     int code_offset;        // for labels
     int code_start;         // for the initial jmp start instruction
     int len_code_lines;
@@ -58,7 +62,12 @@ typedef struct {
                             //  later
     int64_t *code;          // malloced
 
+    // Number of errors encountered
     int error_count;
+
+    // Optional name and description
+    char *name;             // points to somewhere in input_buf
+    char *desc;             // points to somewhere in input_buf
 } horizon_program_t;
 
 struct horizon_regex_t {
@@ -154,7 +163,7 @@ int ho_match_identifier(uint32_t *dest, char **buf);
 int ho_match_directive(uint32_t *dest, char **buf);
 int ho_match_whitespace(char **buf);
 int ho_match_newline(char **buf);
-int ho_match_comment(char **buf);
+int ho_match_comment(char **dest, char **buf);
 int ho_match_string(const char *str, char **buf);
 int ho_match_error(char **buf);
 
