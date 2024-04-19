@@ -1,14 +1,15 @@
 # Parsing.md
 ## First pass
-- Lexical processing
-- Error checking
-- Instruction counting, program length determination
-- Directive and label parsing
-- Symbols stored in symbol table
-- Literals and constants replaced immediately
+- [x] Lexical processing
+- [x] Error checking
+- [x] Instruction counting, program length determination
+- [x] Directive and label parsing
+- [x] Symbols stored in symbol table
+- [x] Literals and constants replaced immediately
+- [ ] Parse macros
 
 ## Second pass
-- Instruction parsing
+- [ ] Instruction parsing
 
 ## Third pass
-- Translate machine code into BP-string
+- [ ] Translate machine code into BP-string

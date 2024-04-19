@@ -62,6 +62,8 @@ typedef struct {
                             //  later
     int64_t *code;          // malloced
 
+
+
     // Number of errors encountered
     int error_count;
 
@@ -69,6 +71,11 @@ typedef struct {
     char *name;             // points to somewhere in input_buf
     char *desc;             // malloced
 } horizon_program_t;
+
+typedef struct {
+    char name[HORIZON_IDENT_MAX_LEN + 1];
+    // ...?
+} horizon_macro_t;
 
 struct horizon_regex_t {
     regex_t literal_re;

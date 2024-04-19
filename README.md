@@ -1,17 +1,26 @@
 # FC-Tools
 Tools for compiling and running programs for my custom computer architectures.
 
-WIP, features may be tested out with Overture for its simplicity and then support Horizon as well. Everest may be skipped entirely as Horizon is similar yet superior.
+# Features
+This project will slowly be developed and made feature complete.
+Currently there exists:
+- Overture (POC)
+    - [x] Parsing/compiling to internal representation
+    - [x] Executing compiled programs
+- Horizon
+    - [ ] **WIP** Parsing/compiling to internal representation
+    - [ ] Compiling to blueprint string
+    - [ ] Executing compiled programs
+- Graphical emulator
+    - [ ] Graphical program to run programs interactively
+    - [ ] Step by step debugging
+    - [ ] Inspect register and RAM state
 
 # Execution
 For now, the program is CLI only, the commands are listed with:
 ```shell
 $ ./fctools help
 ```
-
-Later on, the primary way of running these programs will be with a graphical program built with SDL2, where RAM and register contents and hopefully a screen
-will be visible in real time as the program executes.
-
 # Building
 Dependencies:
 - SDL2
