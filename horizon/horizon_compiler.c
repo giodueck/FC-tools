@@ -27,9 +27,17 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     // Read whole program in
     program.len_input = 0;
     fread(program_buf, 1, size, fd);
+
+    // Don't uppercase comments
+    int uppercase = 1;
     for (int i = 0; i < size; i++)
     {
-        program_buf[i] = toupper(program_buf[i]);
+        if (program_buf[i] == ';')
+            uppercase = 0;
+        else if (program_buf[i] == '\n')
+            uppercase = 1;
+        if (uppercase)
+            program_buf[i] = toupper(program_buf[i]);
     }
 
     // Allocate the needed program space
@@ -140,6 +148,8 @@ void horizon_free(horizon_program_t *program)
         free(program->data);
     if (program->code_lines)
         free(program->code_lines);
+    if (program->desc)
+        free(program->desc);
     free(program);
     return;
 }

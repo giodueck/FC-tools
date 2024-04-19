@@ -1257,6 +1257,51 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
                 return ERR_EXPECTED_COMMENT;
             ho_match_whitespace(&program->name);
             break;
+        case HO_DESC:
+            ho_match_whitespace(buf);
+            char *descbuf = NULL;
+            res = ho_match_comment(&descbuf, buf);
+            if (res == ERR_NO_MATCH)
+                return ERR_EXPECTED_COMMENT;
+
+            // Collect consecutive comments and create a malloced string to hold them
+            int blocksize = BUFSIZ;
+            int descsize = blocksize;
+            int desci = 0;
+            char *desc = malloc(BUFSIZ);
+
+            while (res == NO_ERR)
+            {
+                // get one line
+                // If there is a space in front of the comment, skip it
+                if (descbuf[0] == ' ')
+                    descbuf++;
+
+                // Copy characters up to and including the ending newline
+                while (1)
+                {
+                    if (desci >= descsize)
+                    {
+                        descsize += blocksize;
+                        desc = realloc(desc, descsize);
+                    }
+
+                    desc[desci++] = descbuf[0];
+                    if (descbuf[0] == '\n' || descbuf[0] == '\0')
+                        break;
+                    descbuf++;
+                }
+
+                ho_match_newline(buf);
+                res = ho_match_comment(&descbuf, buf);
+            }
+
+            if (desci > 0 && desc[desci - 1] == '\n')
+                desc[desci - 1] = '\0';
+            else
+                desc[desci] = '\0';
+            program->desc = desc;
+            break;
         default:
             return ERR_NOT_IMPLEMENTED;
             break;

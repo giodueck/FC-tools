@@ -67,7 +67,7 @@ typedef struct {
 
     // Optional name and description
     char *name;             // points to somewhere in input_buf
-    char *desc;             // points to somewhere in input_buf
+    char *desc;             // malloced
 } horizon_program_t;
 
 struct horizon_regex_t {
