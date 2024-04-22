@@ -35,6 +35,13 @@
 #define HORIZON_IDENT_MAX_LEN 255
 
 typedef struct {
+    char name[HORIZON_IDENT_MAX_LEN + 1];
+    int argc;
+    int len;
+    char **lines;
+} horizon_macro_t;
+
+typedef struct {
     int arch;
 
     // Symbols
@@ -62,7 +69,9 @@ typedef struct {
                             //  later
     int64_t *code;          // malloced
 
-
+    int len_macros;
+    int len_macros_space;
+    horizon_macro_t *macros;    // malloced
 
     // Number of errors encountered
     int error_count;
@@ -71,11 +80,6 @@ typedef struct {
     char *name;             // points to somewhere in input_buf
     char *desc;             // malloced
 } horizon_program_t;
-
-typedef struct {
-    char name[HORIZON_IDENT_MAX_LEN + 1];
-    // ...?
-} horizon_macro_t;
 
 struct horizon_regex_t {
     regex_t literal_re;
@@ -148,12 +152,14 @@ enum horizon_directive {
     HO_START,
     HO_NAME,
     HO_DESC,
+    HO_MACRO,
     HO_DIR_NONE = -1,
 };
 
 enum horizon_symbol_type {
     HO_SYM_CONST,
     HO_SYM_VAR,
+    HO_SYM_MACRO,
     HO_SYM_LABEL,
 };
 
@@ -187,6 +193,7 @@ int ho_match_mem(uint32_t *dest, char **buf);
 int ho_parse_value(horizon_program_t *program, uint32_t *dest, char **buf);
 int ho_parse_value_list(horizon_program_t *program, uint32_t **dest_list, int len, char **buf);
 int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **buf);
+int ho_parse_macro(horizon_program_t *program, char *name, int argc, char **buf);
 int ho_parse_label(horizon_program_t *program, char **buf);
 int ho_parse_format_2(horizon_program_t *program, char **buf);
 int ho_parse_format_3(horizon_program_t *program, char **buf);

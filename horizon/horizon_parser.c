@@ -57,18 +57,18 @@ const char *horizon_reserved[] = {
     "LOADD",
     "PUSH",
     "POP",
-    "HALT",
-    "RESET",
-    "CMP",
-    "INC",
-    "INCS",
-    "DEC",
-    "DECS",
-    "CALL",
-    "RETURN",
-    "MOV",
-    "MOVS",
-    "MOV16",
+    // "HALT",
+    // "RESET",
+    // "CMP",
+    // "INC",
+    // "INCS",
+    // "DEC",
+    // "DECS",
+    // "CALL",
+    // "RETURN",
+    // "MOV",
+    // "MOVS",
+    // "MOV16",
     "CONST",
     "DEFINE",
     "INCLUDE",
@@ -506,6 +506,12 @@ int ho_match_directive(uint32_t *dest, char **buf)
         if (strncmp(*buf, ".START", len) == 0)
         {
             *dest = HO_START;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, ".MACRO", len) == 0)
+        {
+            *dest = HO_MACRO;
             *buf += len;
             return NO_ERR;
         }
@@ -1270,6 +1276,7 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
             int desci = 0;
             char *desc = malloc(BUFSIZ);
 
+            char *prev_line_end = NULL;
             while (res == NO_ERR)
             {
                 // get one line
@@ -1292,9 +1299,13 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
                     descbuf++;
                 }
 
+                prev_line_end = *buf;
                 ho_match_newline(buf);
                 res = ho_match_comment(&descbuf, buf);
             }
+
+            // for the line parsing to go correctly, leave the last newline
+            *buf = prev_line_end;
 
             if (desci > 0 && desc[desci - 1] == '\n')
                 desc[desci - 1] = '\0';
@@ -1302,12 +1313,110 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
                 desc[desci] = '\0';
             program->desc = desc;
             break;
+        case HO_MACRO:
+            // read identifier
+            ho_match_whitespace(buf);
+            res = ho_match_identifier(&len, buf);
+            if (res == ERR_NO_MATCH)
+                return ERR_EXPECTED_IDENT;
+            if (res != NO_ERR)
+                return res;
+
+            // check if appropriate
+            strncpy(ident, *buf, len);
+            if (ho_symbol_exists(*program, ident))
+                return ERR_REDEFINED_IDENT;
+
+            // if so, define with the value of literal
+            *buf += len;
+            ho_match_whitespace(buf);
+            res = ho_match_literal(&value, buf);
+            // assume no arguments when not given a number
+            if (res == ERR_NO_MATCH)
+            {
+                if (**buf != '\n')
+                    return ERR_EXPECTED_LITERAL;
+
+                value = 0;
+            }
+            else if (res != NO_ERR)
+                return res;
+            ho_match_newline(buf);
+            res = ho_parse_macro(program, ident, value, buf);
+            if (res != NO_ERR)
+                return res;
+            *lines_consumed = program->macros[program->len_macros - 1].len;
+            break;
         default:
             return ERR_NOT_IMPLEMENTED;
             break;
     }
 
     return NO_ERR;
+}
+
+// Parses a macro definition
+// Expects a series of instructions prefixed with '.' and whitespace
+int ho_parse_macro(horizon_program_t *program, char *name, int argc, char **buf)
+{
+    int line_count = 0;
+
+    horizon_macro_t macro = { 0 };
+
+    strcpy(macro.name, name);
+    macro.argc = argc;
+    macro.lines = NULL;
+
+    int res = 0;
+    char *prev_line_end = NULL;
+    while (1)
+    {
+        // Prefix dot
+        res = ho_match_string(". ", buf);
+        if (res != NO_ERR)
+        {
+            res = ho_match_string(".\t", buf);
+            if (res != NO_ERR)
+                break;
+        }
+        ho_match_whitespace(buf);
+
+        // Store the lines, they will be parsed in the second pass
+        // count the characters until a newline
+        int i = 0;
+        while ((*buf)[i] != '\n') i++;
+        macro.lines = realloc(macro.lines, sizeof(char *) * (line_count + 1));
+        char *line = malloc(i + 1);
+        memset(line, 0, i + 1);
+        strncpy(line, *buf, i);
+        macro.lines[line_count] = line;
+
+        *buf += i;
+        prev_line_end = *buf;
+        ho_match_newline(buf);
+        ho_match_whitespace(buf);
+
+        line_count++;
+    }
+
+    if (line_count > 0)
+    {
+        // for the line parsing to go correctly, leave the last newline
+        *buf = prev_line_end;
+
+        macro.len = line_count;
+        ho_add_symbol(program, name, argc, HO_SYM_MACRO);
+
+        if (program->len_macros >= program->len_macros_space)
+        {
+            program->len_macros_space += 100;
+            program->macros = realloc(program->macros, sizeof(horizon_macro_t) * program->len_macros_space);
+        }
+        program->macros[program->len_macros++] = macro;
+        res = NO_ERR;
+    }
+
+    return res;
 }
 
 // Parses a label
@@ -1331,14 +1440,10 @@ int ho_parse_label(horizon_program_t *program, char **buf)
     if (res != NO_ERR)
         return res;
 
-    // check if appropriate
     strncpy(ident, *buf, len);
-    if (ho_symbol_exists(*program, ident))
-        return ERR_REDEFINED_IDENT;
-
-    // if so, add the label
     *buf += len;
 
+    // check if it is supposed to be a label
     ho_match_whitespace(buf);
     res = ho_match_string(":", buf);
     if (res != NO_ERR)
@@ -1347,6 +1452,10 @@ int ho_parse_label(horizon_program_t *program, char **buf)
         *buf = line_start;
         return ERR_NO_MATCH;
     }
+
+    // check if appropriate
+    if (ho_symbol_exists(*program, ident))
+        return ERR_REDEFINED_IDENT;
 
     ho_add_symbol(program, ident, program->data_offset + program->len_data + program->len_code_lines, HO_SYM_LABEL);
 
@@ -1442,6 +1551,16 @@ int ho_count_instruction(horizon_program_t *program, char **buf)
     {
         ho_add_code_line(program, bufpos);
         return NO_ERR;
+    }
+
+    for (int i = 0; i < program->len_macros; i++)
+    {
+        res = ho_match_string(program->macros[i].name, buf);
+        if (res == NO_ERR)
+        {
+            ho_add_code_line(program, bufpos);
+            return NO_ERR;
+        }
     }
 
     if (res != NO_ERR)

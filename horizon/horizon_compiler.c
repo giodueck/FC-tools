@@ -50,8 +50,12 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     program.len_data_space = data_space;
 
     int code_lines_space = 100;
-    program.code_lines = malloc(sizeof(uint32_t) * code_lines_space);
+    program.code_lines = malloc(sizeof(char *) * code_lines_space);
     program.len_code_lines_space = code_lines_space;
+
+    int macro_space = 100;
+    program.macros = malloc(sizeof(horizon_macro_t) * macro_space);
+    program.len_macros_space = macro_space;
 
     // Account for the initial start instruction
     program.data_offset = 1;
@@ -123,6 +127,16 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
         printf("\n");
     }
     printf("Program description: %s\n", program.desc ? program.desc : "");
+
+    printf("Macros:\n");
+    for (int i = 0; i < program.len_macros; i++)
+    {
+        printf("  %s:\n", program.macros[i].name);
+        for (int j = 0; j < program.macros[i].len; j++)
+        {
+            printf("    %s\n", program.macros[i].lines[j]);
+        }
+    }
 
     horizon_program_t *ret = malloc(sizeof(horizon_program_t));
     *ret = program;
