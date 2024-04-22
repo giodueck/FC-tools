@@ -31,6 +31,7 @@
 #define ERR_UNKNOWN_DIRECTIVE           123
 #define ERR_TOO_MANY_ARGUMENTS          124
 #define ERR_EXPECTED_COMMENT            125
+#define ERR_EXPECTED_MACRO              126
 
 #define HORIZON_IDENT_MAX_LEN 255
 
@@ -72,6 +73,8 @@ typedef struct {
     int len_macros;
     int len_macros_space;
     horizon_macro_t *macros;    // malloced
+    int len_extra_macro_code ;  // number of additional (over 1) code lines introduced by
+                                // macros, for processing labels in first pass
 
     // Number of errors encountered
     int error_count;

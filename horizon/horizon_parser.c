@@ -1415,6 +1415,10 @@ int ho_parse_macro(horizon_program_t *program, char *name, int argc, char **buf)
         program->macros[program->len_macros++] = macro;
         res = NO_ERR;
     }
+    else
+    {
+        return ERR_EXPECTED_MACRO;
+    }
 
     return res;
 }
@@ -1457,7 +1461,7 @@ int ho_parse_label(horizon_program_t *program, char **buf)
     if (ho_symbol_exists(*program, ident))
         return ERR_REDEFINED_IDENT;
 
-    ho_add_symbol(program, ident, program->data_offset + program->len_data + program->len_code_lines, HO_SYM_LABEL);
+    ho_add_symbol(program, ident, program->data_offset + program->len_data + program->len_code_lines + program->len_extra_macro_code, HO_SYM_LABEL);
 
     return NO_ERR;
 }
@@ -1559,6 +1563,7 @@ int ho_count_instruction(horizon_program_t *program, char **buf)
         if (res == NO_ERR)
         {
             ho_add_code_line(program, bufpos);
+            program->len_extra_macro_code += program->macros[i].len - 1;
             return NO_ERR;
         }
     }
@@ -1696,6 +1701,9 @@ void ho_parser_perror(char *msg, int error, int line)
             break;
         case ERR_EXPECTED_COMMENT:
             printf("expected a comment");
+            break;
+        case ERR_EXPECTED_MACRO:
+            printf("macros need at least 1 instruction");
             break;
         default:
             printf("%d", error);
