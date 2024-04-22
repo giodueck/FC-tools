@@ -57,18 +57,6 @@ const char *horizon_reserved[] = {
     "LOADD",
     "PUSH",
     "POP",
-    // "HALT",
-    // "RESET",
-    // "CMP",
-    // "INC",
-    // "INCS",
-    // "DEC",
-    // "DECS",
-    // "CALL",
-    // "RETURN",
-    // "MOV",
-    // "MOVS",
-    // "MOV16",
     "CONST",
     "DEFINE",
     "INCLUDE",
@@ -157,7 +145,7 @@ int ho_add_symbol(horizon_program_t *program, const char *ident, uint32_t value,
     return 0;
 }
 
-// Define a new symbol
+// Define a new data point in program memory
 int ho_add_data(horizon_program_t *program, uint32_t value)
 {
     if (program->len_data >= program->len_data_space)
@@ -171,6 +159,40 @@ int ho_add_data(horizon_program_t *program, uint32_t value)
     return 0;
 }
 
+// Add some predefined macros
+int ho_add_builtin_macros(horizon_program_t *program)
+{
+    struct horizon_builtin_macro_t {
+        char *name;
+        int argc;
+        char *macro_text;
+    };
+
+    struct horizon_builtin_macro_t horizon_builtin_macros[] = {
+        { .name = "HALT",   .argc = 0, .macro_text = ". JMP PC\n" },
+        { .name = "RESET",  .argc = 0, .macro_text = ". XOR SP SP\n. JMP #0\n" },
+        { .name = "CMP",    .argc = 2, .macro_text = ". SUBS NIL $1 $2\n" },
+        { .name = "INC",    .argc = 1, .macro_text = ". ADD $1 #1\n" },
+        { .name = "INCS",   .argc = 1, .macro_text = ". ADDS $1 #1\n" },
+        { .name = "DEC",    .argc = 1, .macro_text = ". SUB $1 #1\n" },
+        { .name = "DECS",   .argc = 1, .macro_text = ". SUBS $1 #1\n" },
+        { .name = "CALL",   .argc = 1, .macro_text = ". ADD LR PC #2\n. JMP $1\n" },
+        { .name = "RETURN", .argc = 0, .macro_text = ". JMP LR\n" },
+        { .name = "MOV",    .argc = 2, .macro_text = ". ADD $1 NIL $2\n" },
+        { .name = "MOVS",   .argc = 2, .macro_text = ". ADDS $1 NIL $2\n" },
+        { .name = "MOV16",  .argc = 2, .macro_text = ". PUSH $2\n. POP $1\n" },
+    };
+
+    for (int i = 0; i < sizeof(horizon_builtin_macros) / sizeof(struct horizon_builtin_macro_t); i++)
+    {
+        char *text = horizon_builtin_macros[i].macro_text;
+        ho_parse_macro(program, horizon_builtin_macros[i].name, horizon_builtin_macros[i].argc, &text);
+    }
+
+    return 0;
+}
+
+// Add a line to be parsed in the second parsing pass
 int ho_add_code_line(horizon_program_t *program, char *buf)
 {
     if (program->len_code_lines >= program->len_code_lines_space)
@@ -1585,7 +1607,6 @@ int ho_parse_instruction(horizon_program_t *program, char **buf)
 int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **buf)
 {
     int retval = NO_ERR;
-    program->error_count = 0;
 
     *lines_consumed = 0;
     retval = ho_parse_directive(program, lines_consumed, buf);

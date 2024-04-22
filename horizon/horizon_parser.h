@@ -212,6 +212,7 @@ int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **b
 
 // Helper functions
 
+int ho_add_builtin_macros(horizon_program_t *program);
 int ho_symbol_exists(horizon_program_t program, const char *token);
 int ho_add_symbol(horizon_program_t *program, const char *ident, uint32_t value, int type);
 void ho_parser_perror(char *msg, int error, int line);

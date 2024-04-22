@@ -66,7 +66,8 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     uint32_t num;
     int retval;
 
-    // ho_add_symbol(&program, "RAM", 1234, HO_SYM_CONST);
+    ho_add_builtin_macros(&program);
+
     int line = 1;
     while (retval != ERR_EOF)
     {
@@ -85,9 +86,11 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
             retval = ho_match_error(&program_buf);
         } else
         {
+            // successfully parsed lines should end here
             retval = ho_match_newline(&program_buf);
             if (retval == ERR_NO_MATCH)
             {
+                program.error_count++;
                 ho_parser_perror(NULL, ERR_TOO_MANY_ARGUMENTS, line);
                 retval = ho_match_error(&program_buf);
             }
