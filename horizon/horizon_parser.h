@@ -207,7 +207,7 @@ int ho_parse_ram(horizon_program_t *program, char **buf);
 int ho_parse_cond(horizon_program_t *program, char **buf);
 int ho_parse_push(horizon_program_t *program, char **buf);
 int ho_count_instruction(horizon_program_t *program, char **buf);
-int ho_parse_instruction(horizon_program_t *program, char **buf);
+int ho_parse_instruction(horizon_program_t *program, char *buf);
 int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **buf);
 
 // Helper functions

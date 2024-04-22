@@ -1590,13 +1590,13 @@ int ho_count_instruction(horizon_program_t *program, char **buf)
         }
     }
 
-    if (res != NO_ERR)
-        return ERR_NO_MATCH;
-
-    return ERR_NOT_IMPLEMENTED;
+    return res;
 }
 
-int ho_parse_instruction(horizon_program_t *program, char **buf)
+// Parse instructions into machine code
+// This function does not use the program buffer anymore, it should be given
+// a single line with a single instruction or macro
+int ho_parse_instruction(horizon_program_t *program, char *buf)
 {
     return ERR_NOT_IMPLEMENTED;
 }

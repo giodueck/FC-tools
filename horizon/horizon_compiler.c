@@ -100,16 +100,16 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
         line++;
     }
 
-    printf("Symbols:\n");
-    for (int i = 0; i < program.len_symbols; i++)
-    {
-        printf("  %s = %u\n", program.symbols[i].name, program.symbols[i].value);
-        if (program.symbols[i].type == HO_SYM_VAR)
-        {
-            printf("    value = %u\n", program.data[program.symbols[i].value - program.data_offset]);
-        }
-    }
-    printf("\nUnparsed text: %s\n", program_buf);
+    // printf("Symbols:\n");
+    // for (int i = 0; i < program.len_symbols; i++)
+    // {
+    //     printf("  %s = %u\n", program.symbols[i].name, program.symbols[i].value);
+    //     if (program.symbols[i].type == HO_SYM_VAR)
+    //     {
+    //         printf("    value = %u\n", program.data[program.symbols[i].value - program.data_offset]);
+    //     }
+    // }
+    // printf("\nUnparsed text: %s\n", program_buf);
 
     printf("Instructions:\n");
     for (int i = 0; i < program.len_code_lines; i++)
@@ -120,32 +120,31 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
         printf("\n");
     }
     printf("Program length: %d\n", program.len_code_lines);
-    printf("Program start instruction: %d\n", program.code_start);
-    printf("Program name:\n");
-    if (program.name)
-    {
-        printf("  ");
-        for (int i = 0; program.name[i] != '\n' && program.name[i] != '\0'; i++)
-            putchar(program.name[i]);
-        printf("\n");
-    }
-    printf("Program description: %s\n", program.desc ? program.desc : "");
-
-    printf("Macros:\n");
-    for (int i = 0; i < program.len_macros; i++)
-    {
-        printf("  %s:\n", program.macros[i].name);
-        for (int j = 0; j < program.macros[i].len; j++)
-        {
-            printf("    %s\n", program.macros[i].lines[j]);
-        }
-    }
+    // printf("Program start instruction: %d\n", program.code_start);
+    // printf("Program name:\n");
+    // if (program.name)
+    // {
+    //     printf("  ");
+    //     for (int i = 0; program.name[i] != '\n' && program.name[i] != '\0'; i++)
+    //         putchar(program.name[i]);
+    //     printf("\n");
+    // }
+    // printf("Program description: %s\n", program.desc ? program.desc : "");
+    //
+    // printf("Macros:\n");
+    // for (int i = 0; i < program.len_macros; i++)
+    // {
+    //     printf("  %s:\n", program.macros[i].name);
+    //     for (int j = 0; j < program.macros[i].len; j++)
+    //     {
+    //         printf("    %s\n", program.macros[i].lines[j]);
+    //     }
+    // }
 
     horizon_program_t *ret = malloc(sizeof(horizon_program_t));
     *ret = program;
     return ret;
 }
-
 
 // Frees memory allocated by horizon_parse
 void horizon_free(horizon_program_t *program)

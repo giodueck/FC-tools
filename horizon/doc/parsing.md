@@ -6,7 +6,7 @@
 - [x] Directive and label parsing
 - [x] Symbols stored in symbol table
 - [x] Literals and constants replaced immediately
-- [ ] Parse macros
+- [x] Parse macros
 
 ## Second pass
 - [ ] Instruction parsing
