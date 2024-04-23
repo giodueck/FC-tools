@@ -68,6 +68,10 @@ typedef struct {
     char **code_lines;      // malloced, array of pointers to lines in the lines_buf, ending in '\n'
                             //  these lines must be parsed in the second pass to allow using labels defined
                             //  later
+
+    uint32_t args[3];       // arguments parsed are placed here temporarily
+    int len_code;
+    int len_code_space;
     int64_t *code;          // malloced
 
     int len_macros;

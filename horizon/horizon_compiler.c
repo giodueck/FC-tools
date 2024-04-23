@@ -53,6 +53,10 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     program.code_lines = malloc(sizeof(char *) * code_lines_space);
     program.len_code_lines_space = code_lines_space;
 
+    int code_space = 100;
+    program.code = malloc(sizeof(int64_t) * code_space);
+    program.len_code_space = code_space;
+
     int macro_space = 100;
     program.macros = malloc(sizeof(horizon_macro_t) * macro_space);
     program.len_macros_space = macro_space;
@@ -166,6 +170,8 @@ void horizon_free(horizon_program_t *program)
         free(program->code_lines);
     if (program->desc)
         free(program->desc);
+    if (program->code)
+        free(program->code);
     free(program);
     return;
 }

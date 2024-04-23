@@ -207,6 +207,21 @@ int ho_add_code_line(horizon_program_t *program, char *buf)
     return 0;
 }
 
+// Add a machine instruction
+int ho_add_code(horizon_program_t *program, int64_t code)
+{
+    if (program->len_code >= program->len_code_space)
+    {
+        program->len_code_space += 100;
+        program->code = realloc(program->code, sizeof(int64_t) * program->len_code_space);
+    }
+
+    program->code[program->len_code] = code;
+    program->len_code++;
+
+    return 0;
+}
+
 // Initilizes all regex used by the parser
 int ho_init_regex()
 {
@@ -1488,24 +1503,136 @@ int ho_parse_label(horizon_program_t *program, char **buf)
     return NO_ERR;
 }
 
+// Match "reg reg" or "reg reg reg"
 int ho_parse_format_2(horizon_program_t *program, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    char *start = *buf;
+    uint32_t regnum;
+    int res = ho_match_register(&regnum, buf);
+    if (res != NO_ERR)
+        return res;
+
+    program->args[0] = regnum;
+
+    res = ho_match_register(&regnum, buf);
+    if (res != NO_ERR)
+        return res;
+
+    program->args[1] = regnum;
+
+    // If this gives no match and instead whitespace matches, the previous registers
+    // were instead 0/1 and 2 instead of 0 and 1
+    res = ho_match_register(&regnum, buf);
+    if (res != NO_ERR)
+    {
+        // After this there should be no more arguments
+        ho_match_whitespace(buf);
+        ho_match_comment(NULL, buf);
+        if (**buf != '\n' && **buf != '\0')
+        {
+            *buf = start;
+            return ERR_NO_MATCH;
+        }
+
+        program->args[2] = program->args[1];
+        program->args[1] = program->args[0];
+        return NO_ERR;
+    }
+
+    program->args[2] = regnum;
+
+    return NO_ERR;
 }
 
+// Match "reg imm8" or "reg reg imm8"
 int ho_parse_format_3(horizon_program_t *program, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    char *start = *buf;
+    uint32_t regnum;
+    int res = ho_match_register(&regnum, buf);
+    if (res != NO_ERR)
+        return res;
+
+    program->args[0] = regnum;
+
+    // If this does not match, the first argument is the same as the destination
+    res = ho_match_register(&regnum, buf);
+    if (res != NO_ERR)
+    {
+        program->args[1] = program->args[0];
+    }
+    else
+    {
+        program->args[1] = regnum;
+    }
+
+    uint32_t imm8;
+    res = ho_match_imm8(&imm8, buf);
+    if (res != NO_ERR)
+        return res;
+
+    // After this there should be no more arguments
+    ho_match_whitespace(buf);
+    ho_match_comment(NULL, buf);
+    if (**buf != '\n' && **buf != '\0')
+    {
+        *buf = start;
+        return ERR_NO_MATCH;
+    }
+    program->args[2] = imm8;
+
+    return NO_ERR;
 }
 
+// Match "reg"
 int ho_parse_format_4(horizon_program_t *program, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    char *start = *buf;
+    uint32_t regnum;
+    int res = ho_match_register(&regnum, buf);
+    if (res != NO_ERR)
+        return res;
+
+    // After this there should be no more arguments
+    ho_match_whitespace(buf);
+    ho_match_comment(NULL, buf);
+    if (**buf != '\n' && **buf != '\0')
+    {
+        *buf = start;
+        return ERR_NO_MATCH;
+    }
+
+    program->args[0] = regnum;
+    program->args[1] = 0;
+    program->args[2] = 0;
+
+    return NO_ERR;
 }
 
+// Match "imm16"
 int ho_parse_format_5(horizon_program_t *program, char **buf)
 {
-    return ERR_NOT_IMPLEMENTED;
+    char *start = *buf;
+    uint32_t imm16;
+    int res = ho_match_imm16(&imm16, buf);
+
+    if (res != NO_ERR)
+        return res;
+
+    // After this there should be no more arguments
+    ho_match_whitespace(buf);
+    ho_match_comment(NULL, buf);
+    if (**buf != '\n' && **buf != '\0')
+    {
+        *buf = start;
+        return ERR_NO_MATCH;
+    }
+
+    program->args[0] = imm16;
+    program->args[1] = 0;
+    program->args[2] = 0;
+
+    return NO_ERR;
 }
 
 int ho_parse_alu(horizon_program_t *program, char **buf)
@@ -1598,6 +1725,19 @@ int ho_count_instruction(horizon_program_t *program, char **buf)
 // a single line with a single instruction or macro
 int ho_parse_instruction(horizon_program_t *program, char *buf)
 {
+    char *start = buf;
+    int res;
+    uint32_t opcode;
+
+    // For the simple instructions no complex parsing is necessary
+    res = ho_match_noop(&opcode, &buf);
+    if (res == NO_ERR)
+    {
+        int64_t instr = opcode << 24;
+        ho_add_code(program, instr);
+
+    }
+
     return ERR_NOT_IMPLEMENTED;
 }
 
