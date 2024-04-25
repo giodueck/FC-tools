@@ -32,6 +32,10 @@
 #define ERR_TOO_MANY_ARGUMENTS          124
 #define ERR_EXPECTED_COMMENT            125
 #define ERR_EXPECTED_MACRO              126
+#define ERR_EXPECTED_FORMAT_1           127
+#define ERR_EXPECTED_FORMAT_2_3         128
+#define ERR_EXPECTED_FORMAT_4           129
+#define ERR_EXPECTED_FORMAT_4_5         130
 
 #define HORIZON_IDENT_MAX_LEN 255
 
@@ -188,7 +192,8 @@ int ho_match_string(const char *str, char **buf);
 int ho_match_error(char **buf);
 
 int ho_match_noop(uint32_t *dest, char **buf);
-int ho_match_not_pop(uint32_t *dest, char **buf);
+int ho_match_pop(uint32_t *dest, char **buf);
+int ho_match_not(uint32_t *dest, char **buf);
 int ho_match_alu(uint32_t *dest, char **buf);
 int ho_match_push(uint32_t *dest, char **buf);
 int ho_match_cond(uint32_t *dest, char **buf);
@@ -206,6 +211,7 @@ int ho_parse_format_2(horizon_program_t *program, char **buf);
 int ho_parse_format_3(horizon_program_t *program, char **buf);
 int ho_parse_format_4(horizon_program_t *program, char **buf);
 int ho_parse_format_5(horizon_program_t *program, char **buf);
+int ho_parse_format_6(horizon_program_t *program, char **buf);
 int ho_parse_alu(horizon_program_t *program, char **buf);
 int ho_parse_ram(horizon_program_t *program, char **buf);
 int ho_parse_cond(horizon_program_t *program, char **buf);

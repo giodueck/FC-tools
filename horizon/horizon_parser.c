@@ -663,8 +663,8 @@ int ho_match_noop(uint32_t *dest, char **buf)
     return ERR_NO_MATCH;
 }
 
-//Match the not or the pop instruction and set dest to the opcode
-int ho_match_not_pop(uint32_t *dest, char **buf)
+//Match the the not instruction and set dest to the opcode
+int ho_match_not(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
@@ -688,17 +688,43 @@ int ho_match_not_pop(uint32_t *dest, char **buf)
             *dest = HO_NOT;
             *buf += len;
             return NO_ERR;
-        } else if (strncmp(*buf, "POP", len) == 0)
-        {
-            *dest = HO_POP;
-            *buf += len;
-            return NO_ERR;
         }
     } else
     {
         if (strncmp(*buf, "NOTS", len) == 0)
         {
             *dest = HO_NOTS;
+            *buf += len;
+            return NO_ERR;
+        }
+    }
+
+    return ERR_NO_MATCH;
+}
+
+//Match the the pop instruction and set dest to the opcode
+int ho_match_pop(uint32_t *dest, char **buf)
+{
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        reret = ho_init_regex();
+        regex = horizon_regex.instruction_re;
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len < 3)
+        return ERR_NO_MATCH;
+
+    if (len == 3)
+    {
+        if (strncmp(*buf, "POP", len) == 0)
+        {
+            *dest = HO_POP;
             *buf += len;
             return NO_ERR;
         }
@@ -1635,6 +1661,40 @@ int ho_parse_format_5(horizon_program_t *program, char **buf)
     return NO_ERR;
 }
 
+// Match "reg" or "reg reg"
+int ho_parse_format_6(horizon_program_t *program, char **buf)
+{
+    char *start = *buf;
+    uint32_t regnum;
+    int res = ho_match_register(&regnum, buf);
+    if (res != NO_ERR)
+        return res;
+
+    program->args[0] = regnum;
+
+    // If this gives no match and instead whitespace matches, the previous register
+    // was instead 0/1 instead of 0
+    res = ho_match_register(&regnum, buf);
+    if (res != NO_ERR)
+    {
+        // After this there should be no more arguments
+        ho_match_whitespace(buf);
+        ho_match_comment(NULL, buf);
+        if (**buf != '\n' && **buf != '\0')
+        {
+            *buf = start;
+            return ERR_NO_MATCH;
+        }
+
+        program->args[1] = program->args[0];
+        return NO_ERR;
+    }
+
+    program->args[1] = regnum;
+
+    return NO_ERR;
+}
+
 int ho_parse_alu(horizon_program_t *program, char **buf)
 {
     return ERR_NOT_IMPLEMENTED;
@@ -1678,7 +1738,14 @@ int ho_count_instruction(horizon_program_t *program, char **buf)
         return NO_ERR;
     }
 
-    res = ho_match_not_pop(&opcode, buf);
+    res = ho_match_pop(&opcode, buf);
+    if (res == NO_ERR)
+    {
+        ho_add_code_line(program, bufpos);
+        return NO_ERR;
+    }
+
+    res = ho_match_not(&opcode, buf);
     if (res == NO_ERR)
     {
         ho_add_code_line(program, bufpos);
@@ -1735,7 +1802,24 @@ int ho_parse_instruction(horizon_program_t *program, char *buf)
     {
         int64_t instr = opcode << 24;
         ho_add_code(program, instr);
+    }
 
+    // ALU instructions
+    res = ho_match_alu(&opcode, &buf);
+    if (res == NO_ERR)
+    {
+        res = ho_parse_format_2(program, &buf);
+        if (res != NO_ERR)
+        {
+            res = ho_parse_format_3(program, &buf);
+            if (res != NO_ERR)
+            {
+                return ERR_EXPECTED_FORMAT_2_3;
+            }
+        }
+
+        int64_t instr = opcode << 24 | program->args[2] << 16 | program->args[1] << 8 | program->args[0];
+        ho_add_code(program, instr);
     }
 
     return ERR_NOT_IMPLEMENTED;
@@ -1865,6 +1949,18 @@ void ho_parser_perror(char *msg, int error, int line)
             break;
         case ERR_EXPECTED_MACRO:
             printf("macros need at least 1 instruction");
+            break;
+        case ERR_EXPECTED_FORMAT_1:
+            printf("instruction takes no arguments");
+            break;
+        case ERR_EXPECTED_FORMAT_2_3:
+            printf("instruction takes Rd [Rn] Rm/imm8 arguments");
+            break;
+        case ERR_EXPECTED_FORMAT_4:
+            printf("instruction takes one register argument");
+            break;
+        case ERR_EXPECTED_FORMAT_4_5:
+            printf("instruction takes one imm16 argument");
             break;
         default:
             printf("%d", error);

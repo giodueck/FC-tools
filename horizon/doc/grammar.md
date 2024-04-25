@@ -53,8 +53,11 @@ parse_alu   : alu_normal format-2
             | alu_normal format-3
             ;
 
-parse_not_pop : ["not"|"pop" format-4
-              ;
+parse_not   : "not" format-6
+            ;
+
+parse_pop   : "pop" format-4
+            ;
 
 parse_ram   : ram_instr format-4;
             ;
@@ -71,6 +74,10 @@ format-4    : register
             ;
 
 format-5    : imm16
+            ;
+
+format-6    : register register
+            : register
             ;
 
 format-2    : register register register
