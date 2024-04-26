@@ -120,7 +120,18 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     {
         printf("  ");
         for (int j = 0; program.code_lines[i][j] != '\n' && program.code_lines[i][j] != '\0'; j++)
+        {
             putchar(program.code_lines[i][j]);
+        }
+
+        int res = ho_parse_instruction(&program, program.code_lines[i]);
+        printf("\n");
+        if (res == NO_ERR || res == ERR_EOF)
+        {
+            printf("    code <%08x> <%d>", (int32_t) ((int32_t)0xFFFFFFFF & program.code[i]), (int32_t) ((int32_t)0xFFFFFFFF & program.code[i]));
+        }
+        else ho_parser_perror(NULL, res, i);
+
         printf("\n");
     }
     printf("Program length: %d\n", program.len_code_lines);

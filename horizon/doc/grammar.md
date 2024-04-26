@@ -40,10 +40,11 @@ value-list  : value , value-list
 
 instruction : parse_noop
             | parse_alu
-            | parse_not_pop
+            | parse_not
             | parse_ram
             | parse_cond
             | parse_push
+            | parse_pop
             ;
 
 parse_noop  : "noop"
@@ -59,7 +60,8 @@ parse_not   : "not" format-6
 parse_pop   : "pop" format-4
             ;
 
-parse_ram   : ram_instr format-4;
+parse_ram   : ram_instr format-4
+            | ram_instr format-5
             ;
 
 parse_cond  : cond_instr format-4

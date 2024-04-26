@@ -104,6 +104,9 @@ int ho_symbol_exists(horizon_program_t program, const char *token)
     return 0;
 }
 
+// Get a symbol from the symbol table
+// If the symbol exists, returns 1
+// else, returns 0
 int ho_get_symbol(horizon_program_t program, symbol_t *dest, const char *token)
 {
     for (int i = 0; i < program.len_symbols; i++)
@@ -1033,8 +1036,8 @@ int ho_match_cond(uint32_t *dest, char **buf)
     return ERR_NO_MATCH;
 }
 
-// Match any memory access instruction and set dest to the opcode
-int ho_match_mem(uint32_t *dest, char **buf)
+// Match any store instruction and set dest to the opcode
+int ho_match_store(uint32_t *dest, char **buf)
 {
     static regex_t regex;
     static int reret = INT_MAX;
@@ -1048,31 +1051,14 @@ int ho_match_mem(uint32_t *dest, char **buf)
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
-    if (ret != 0 || len < 4 || len > 6)
+    if (ret != 0 || len < 5 || len > 6)
         return ERR_NO_MATCH;
 
-    if (len == 4 && strncmp(*buf, "LOAD", len) == 0)
-    {
-        *dest = HO_LOAD;
-        *buf += len;
-        return NO_ERR;
-    } else if (len == 5)
+    if (len == 5)
     {
         if (strncmp(*buf, "STORE", len) == 0)
         {
             *dest = HO_STORE;
-            *buf += len;
-            return NO_ERR;
-        }
-        if (strncmp(*buf, "LOADI", len) == 0)
-        {
-            *dest = HO_LOADI;
-            *buf += len;
-            return NO_ERR;
-        }
-        if (strncmp(*buf, "LOADD", len) == 0)
-        {
-            *dest = HO_LOADD;
             *buf += len;
             return NO_ERR;
         }
@@ -1087,6 +1073,48 @@ int ho_match_mem(uint32_t *dest, char **buf)
         if (strncmp(*buf, "STORED", len) == 0)
         {
             *dest = HO_STORED;
+            *buf += len;
+            return NO_ERR;
+        }
+    }
+
+    return ERR_NO_MATCH;
+}
+
+// Match any load instruction and set dest to the opcode
+int ho_match_load(uint32_t *dest, char **buf)
+{
+    static regex_t regex;
+    static int reret = INT_MAX;
+    if (reret == INT_MAX)
+    {
+        reret = ho_init_regex();
+        regex = horizon_regex.instruction_re;
+    }
+
+    regmatch_t match;
+    int ret = regexec(&regex, *buf, 1, &match, 0);
+
+    int len = match.rm_eo - match.rm_so;
+    if (ret != 0 || len < 4 || len > 5)
+        return ERR_NO_MATCH;
+
+    if (len == 4 && strncmp(*buf, "LOAD", len) == 0)
+    {
+        *dest = HO_LOAD;
+        *buf += len;
+        return NO_ERR;
+    } else if (len == 5)
+    {
+        if (strncmp(*buf, "LOADI", len) == 0)
+        {
+            *dest = HO_LOADI;
+            *buf += len;
+            return NO_ERR;
+        }
+        if (strncmp(*buf, "LOADD", len) == 0)
+        {
+            *dest = HO_LOADD;
             *buf += len;
             return NO_ERR;
         }
@@ -1532,17 +1560,26 @@ int ho_parse_label(horizon_program_t *program, char **buf)
 // Match "reg reg" or "reg reg reg"
 int ho_parse_format_2(horizon_program_t *program, char **buf)
 {
+    program->imm_arg = 0;
     char *start = *buf;
     uint32_t regnum;
     int res = ho_match_register(&regnum, buf);
     if (res != NO_ERR)
+    {
+        *buf = start;
         return res;
+    }
+    ho_match_whitespace(buf);
 
     program->args[0] = regnum;
 
     res = ho_match_register(&regnum, buf);
     if (res != NO_ERR)
+    {
+        *buf = start;
         return res;
+    }
+    ho_match_whitespace(buf);
 
     program->args[1] = regnum;
 
@@ -1573,16 +1610,22 @@ int ho_parse_format_2(horizon_program_t *program, char **buf)
 // Match "reg imm8" or "reg reg imm8"
 int ho_parse_format_3(horizon_program_t *program, char **buf)
 {
+    program->imm_arg = 1;
     char *start = *buf;
     uint32_t regnum;
     int res = ho_match_register(&regnum, buf);
     if (res != NO_ERR)
+    {
+        *buf = start;
         return res;
+    }
+    ho_match_whitespace(buf);
 
     program->args[0] = regnum;
 
     // If this does not match, the first argument is the same as the destination
     res = ho_match_register(&regnum, buf);
+    ho_match_whitespace(buf);
     if (res != NO_ERR)
     {
         program->args[1] = program->args[0];
@@ -1595,7 +1638,21 @@ int ho_parse_format_3(horizon_program_t *program, char **buf)
     uint32_t imm8;
     res = ho_match_imm8(&imm8, buf);
     if (res != NO_ERR)
-        return res;
+    {
+        char ident[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
+        uint32_t len = 0;
+        res = ho_match_identifier(&len, buf);
+        strncpy(ident, *buf, len);
+        symbol_t symbol = { 0 };
+        if (!(ho_get_symbol(*program, &symbol, ident) && (symbol.type == HO_SYM_VAR || symbol.type == HO_SYM_LABEL || symbol.type == HO_SYM_CONST) && symbol.value <= UINT8_MAX))
+        {
+            *buf = start;
+            return ERR_EXPECTED_IMM8;
+        }
+
+        imm8 = symbol.value;
+        *buf += len;
+    }
 
     // After this there should be no more arguments
     ho_match_whitespace(buf);
@@ -1613,11 +1670,15 @@ int ho_parse_format_3(horizon_program_t *program, char **buf)
 // Match "reg"
 int ho_parse_format_4(horizon_program_t *program, char **buf)
 {
+    program->imm_arg = 0;
     char *start = *buf;
     uint32_t regnum;
     int res = ho_match_register(&regnum, buf);
     if (res != NO_ERR)
+    {
+        *buf = start;
         return res;
+    }
 
     // After this there should be no more arguments
     ho_match_whitespace(buf);
@@ -1638,12 +1699,26 @@ int ho_parse_format_4(horizon_program_t *program, char **buf)
 // Match "imm16"
 int ho_parse_format_5(horizon_program_t *program, char **buf)
 {
+    program->imm_arg = 1;
     char *start = *buf;
     uint32_t imm16;
     int res = ho_match_imm16(&imm16, buf);
-
     if (res != NO_ERR)
-        return res;
+    {
+        char ident[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
+        uint32_t len = 0;
+        res = ho_match_identifier(&len, buf);
+        strncpy(ident, *buf, len);
+        symbol_t symbol = { 0 };
+        if (!(ho_get_symbol(*program, &symbol, ident) && (symbol.type == HO_SYM_VAR || symbol.type == HO_SYM_LABEL || symbol.type == HO_SYM_CONST) && symbol.value <= UINT16_MAX))
+        {
+            *buf = start;
+            return ERR_EXPECTED_IMM16;
+        }
+
+        imm16 = symbol.value;
+        *buf += len;
+    }
 
     // After this there should be no more arguments
     ho_match_whitespace(buf);
@@ -1664,12 +1739,17 @@ int ho_parse_format_5(horizon_program_t *program, char **buf)
 // Match "reg" or "reg reg"
 int ho_parse_format_6(horizon_program_t *program, char **buf)
 {
+    program->imm_arg = 0;
     char *start = *buf;
     uint32_t regnum;
     int res = ho_match_register(&regnum, buf);
     if (res != NO_ERR)
+    {
+        *buf = start;
         return res;
+    }
 
+    ho_match_whitespace(buf);
     program->args[0] = regnum;
 
     // If this gives no match and instead whitespace matches, the previous register
@@ -1752,7 +1832,14 @@ int ho_count_instruction(horizon_program_t *program, char **buf)
         return NO_ERR;
     }
 
-    res = ho_match_mem(&opcode, buf);
+    res = ho_match_store(&opcode, buf);
+    if (res == NO_ERR)
+    {
+        ho_add_code_line(program, bufpos);
+        return NO_ERR;
+    }
+
+    res = ho_match_load(&opcode, buf);
     if (res == NO_ERR)
     {
         ho_add_code_line(program, bufpos);
@@ -1796,18 +1883,25 @@ int ho_parse_instruction(horizon_program_t *program, char *buf)
     int res;
     uint32_t opcode;
 
+    // Format 1
     // For the simple instructions no complex parsing is necessary
     res = ho_match_noop(&opcode, &buf);
     if (res == NO_ERR)
     {
         int64_t instr = opcode << 24;
         ho_add_code(program, instr);
+        res = ho_match_newline(&buf);
+        if (res != NO_ERR && res != ERR_EOF)
+            return ERR_EXPECTED_FORMAT_2_3;
+        return res;
     }
 
+    // Format 2/3
     // ALU instructions
     res = ho_match_alu(&opcode, &buf);
     if (res == NO_ERR)
     {
+        ho_match_whitespace(&buf);
         res = ho_parse_format_2(program, &buf);
         if (res != NO_ERR)
         {
@@ -1818,11 +1912,99 @@ int ho_parse_instruction(horizon_program_t *program, char *buf)
             }
         }
 
-        int64_t instr = opcode << 24 | program->args[2] << 16 | program->args[1] << 8 | program->args[0];
+        int64_t instr = (opcode | (program->imm_arg << 7)) << 24 | program->args[0] << 16 | program->args[1] << 8 | program->args[2];
         ho_add_code(program, instr);
+        res = ho_match_newline(&buf);
+        if (res != NO_ERR && res != ERR_EOF)
+            return ERR_EXPECTED_FORMAT_2_3;
+        return res;
     }
 
-    return ERR_NOT_IMPLEMENTED;
+    // Format 6
+    // Not instruction
+    res = ho_match_not(&opcode, &buf);
+    if (res == NO_ERR)
+    {
+        ho_match_whitespace(&buf);
+        res = ho_parse_format_6(program, &buf);
+        if (res != NO_ERR)
+            return ERR_EXPECTED_FORMAT_6;
+
+        int64_t instr = opcode << 24 | program->args[0] << 16 | program->args[1] << 8;
+        ho_add_code(program, instr);
+
+        res = ho_match_newline(&buf);
+        if (res != NO_ERR && res != ERR_EOF)
+            return ERR_EXPECTED_FORMAT_6;
+        return res;
+    }
+
+    // Format 4/5
+    // Store instructions
+    res = ho_match_store(&opcode, &buf);
+    if (res == NO_ERR)
+    {
+    ho_parse_instruction_4_5:
+        ho_match_whitespace(&buf);
+        res = ho_parse_format_4(program, &buf);
+        if (res != NO_ERR)
+        {
+            res = ho_parse_format_5(program, &buf);
+            if (res != NO_ERR)
+                return ERR_EXPECTED_FORMAT_4_5;
+        }
+
+        // When the argument is an imm16, it takes up the 2 MSBs, otherwise
+        // the register is kept in byte 3
+        int64_t instr;
+        if (!program->imm_arg)
+            instr = opcode << 24 | program->args[0] << 8;
+        else
+            instr = (opcode | (1 << 7)) << 24 | program->args[0];
+        ho_add_code(program, instr);
+
+        res = ho_match_newline(&buf);
+        if (res != NO_ERR && res != ERR_EOF)
+            return ERR_EXPECTED_FORMAT_4_5;
+        return res;
+    }
+    // Push instruction (also the same format)
+    res = ho_match_push(&opcode, &buf);
+    if (res == NO_ERR)
+        goto ho_parse_instruction_4_5;
+    // Conditionals (also the same format)
+    res = ho_match_cond(&opcode, &buf);
+    if (res == NO_ERR)
+        goto ho_parse_instruction_4_5;
+
+    // Format 4
+    // Load instructions
+    res = ho_match_load(&opcode, &buf);
+    if (res == NO_ERR)
+    {
+    ho_parse_instruction_4:
+        ho_match_whitespace(&buf);
+        res = ho_parse_format_4(program, &buf);
+        if (res != NO_ERR)
+            return ERR_EXPECTED_FORMAT_4;
+
+        int64_t instr = opcode << 24 | program->args[0] << 16;
+        ho_add_code(program, instr);
+
+        res = ho_match_newline(&buf);
+        if (res != NO_ERR && res != ERR_EOF)
+            return ERR_EXPECTED_FORMAT_4;
+        return res;
+    }
+    // Pop instruction
+    res = ho_match_pop(&opcode, &buf);
+    if (res == NO_ERR)
+        goto ho_parse_instruction_4;
+
+    // Fallthrough
+    ho_add_code(program, 0);
+
+    return ERR_UNKNOWN_INSTRUCTION;
 }
 
 // Parses a non-empty line, which can be an instruction, a directive or a label.
@@ -1960,7 +2142,16 @@ void ho_parser_perror(char *msg, int error, int line)
             printf("instruction takes one register argument");
             break;
         case ERR_EXPECTED_FORMAT_4_5:
-            printf("instruction takes one imm16 argument");
+            printf("instruction takes one register or imm16 argument");
+            break;
+        case ERR_EXPECTED_FORMAT_6:
+            printf("instruction takes Rd [Rn] arguments");
+            break;
+        case ERR_EXPECTED_IMM8:
+            printf("expected an 8-bit immediate value");
+            break;
+        case ERR_EXPECTED_IMM16:
+            printf("expected an 16-bit immediate value");
             break;
         default:
             printf("%d", error);

@@ -36,6 +36,9 @@
 #define ERR_EXPECTED_FORMAT_2_3         128
 #define ERR_EXPECTED_FORMAT_4           129
 #define ERR_EXPECTED_FORMAT_4_5         130
+#define ERR_EXPECTED_FORMAT_6           131
+#define ERR_EXPECTED_IMM8               132
+#define ERR_EXPECTED_IMM16              133
 
 #define HORIZON_IDENT_MAX_LEN 255
 
@@ -74,6 +77,7 @@ typedef struct {
                             //  later
 
     uint32_t args[3];       // arguments parsed are placed here temporarily
+    int imm_arg;            // zero if no immediate arguments, 1 if there is
     int len_code;
     int len_code_space;
     int64_t *code;          // malloced
@@ -197,7 +201,8 @@ int ho_match_not(uint32_t *dest, char **buf);
 int ho_match_alu(uint32_t *dest, char **buf);
 int ho_match_push(uint32_t *dest, char **buf);
 int ho_match_cond(uint32_t *dest, char **buf);
-int ho_match_mem(uint32_t *dest, char **buf);
+int ho_match_store(uint32_t *dest, char **buf);
+int ho_match_load(uint32_t *dest, char **buf);
 
 // Parse means this is a rule in the grammar
 // Return values are errors
