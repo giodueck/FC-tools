@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../helpers.h"
 #include "horizon_parser.h"
 #include "../fcerrors.h"
 
@@ -1514,6 +1515,22 @@ int ho_parse_macro(horizon_program_t *program, char *name, int argc, char **buf)
     return res;
 }
 
+// Get a defined macro
+// If the macro exists, returns 1
+// else, returns 0
+int ho_get_macro(horizon_program_t program, horizon_macro_t *dest, const char *token)
+{
+    for (int i = 0; i < program.len_macros; i++)
+    {
+        if (strcmp(token, program.macros[i].name) == 0)
+        {
+            *dest = program.macros[i];
+            return 1;
+        }
+    }
+    return 0;
+}
+
 // Parses a label
 // If the line ends with ':', stores the identifier with the number of instructions
 // counted so far as the value.
@@ -2001,9 +2018,11 @@ int ho_parse_instruction(horizon_program_t *program, char *buf)
     if (res == NO_ERR)
         goto ho_parse_instruction_4;
 
+    // Macro
+    // Replace args in definition and recurse into this function
+
     // Fallthrough
     ho_add_code(program, 0);
-
     return ERR_UNKNOWN_INSTRUCTION;
 }
 
