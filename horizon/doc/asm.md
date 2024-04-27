@@ -80,12 +80,42 @@ program.
 
 This directive can be used once in a program.
 
+### Macro
+The `.macro` directive is used like so:
+
+```
+.macro ident literal
+. instr1 args1
+. instr2 args2
+```
+where `ident` is an identifier and `literal` is a literal number as defined above or
+skipped (implied 0). The macro can have as many instructions as needed, but no
+directives or macros. The arguments can be replaced with `$n$` for the instructions
+to pass the `n`th macro argument instead of a predefined argument.
+
+The definition of the macro ends after the last instruction prefixed with `.` and
+whitespace, and must have at least one instruction.
+
+The builtin macros include:
+- `halt`
+- `reset`
+- `cmp`
+- `inc`
+- `incs`
+- `dec`
+- `decs`
+- `call`
+- `return`
+- `mov`
+- `movs`
+- `mov16`
+
 ### @rep...@end
 The `@rep` and `@end` preprocessor keywords were scrapped, as there seems to be no
 real problem they meaningfully solve.
 
-### Include and define
-Directives for the unimplemented include and define concepts may be added later.
+### Include
+Directives for the unimplemented include concept may be added later.
 
 ## Labels
 Labels are as they were previously:

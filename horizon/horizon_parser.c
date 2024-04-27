@@ -175,16 +175,16 @@ int ho_add_builtin_macros(horizon_program_t *program)
     struct horizon_builtin_macro_t horizon_builtin_macros[] = {
         { .name = "HALT",   .argc = 0, .macro_text = ". JMP PC\n" },
         { .name = "RESET",  .argc = 0, .macro_text = ". XOR SP SP\n. JMP #0\n" },
-        { .name = "CMP",    .argc = 2, .macro_text = ". SUBS NIL $1 $2\n" },
-        { .name = "INC",    .argc = 1, .macro_text = ". ADD $1 #1\n" },
-        { .name = "INCS",   .argc = 1, .macro_text = ". ADDS $1 #1\n" },
-        { .name = "DEC",    .argc = 1, .macro_text = ". SUB $1 #1\n" },
-        { .name = "DECS",   .argc = 1, .macro_text = ". SUBS $1 #1\n" },
-        { .name = "CALL",   .argc = 1, .macro_text = ". ADD LR PC #2\n. JMP $1\n" },
+        { .name = "CMP",    .argc = 2, .macro_text = ". SUBS NIL $1$ $2$\n" },
+        { .name = "INC",    .argc = 1, .macro_text = ". ADD $1$ #1\n" },
+        { .name = "INCS",   .argc = 1, .macro_text = ". ADDS $1$ #1\n" },
+        { .name = "DEC",    .argc = 1, .macro_text = ". SUB $1$ #1\n" },
+        { .name = "DECS",   .argc = 1, .macro_text = ". SUBS $1$ #1\n" },
+        { .name = "CALL",   .argc = 1, .macro_text = ". ADD LR PC #2\n. JMP $1$\n" },
         { .name = "RETURN", .argc = 0, .macro_text = ". JMP LR\n" },
-        { .name = "MOV",    .argc = 2, .macro_text = ". ADD $1 NIL $2\n" },
-        { .name = "MOVS",   .argc = 2, .macro_text = ". ADDS $1 NIL $2\n" },
-        { .name = "MOV16",  .argc = 2, .macro_text = ". PUSH $2\n. POP $1\n" },
+        { .name = "MOV",    .argc = 2, .macro_text = ". ADD $1$ NIL $2$\n" },
+        { .name = "MOVS",   .argc = 2, .macro_text = ". ADDS $1$ NIL $2$\n" },
+        { .name = "MOV16",  .argc = 2, .macro_text = ". PUSH $2$\n. POP $1$\n" },
     };
 
     for (int i = 0; i < sizeof(horizon_builtin_macros) / sizeof(struct horizon_builtin_macro_t); i++)
@@ -1473,6 +1473,14 @@ int ho_parse_macro(horizon_program_t *program, char *name, int argc, char **buf)
         }
         ho_match_whitespace(buf);
 
+        // Validate that the line is a valid instruction or already defined macro
+        char *instr = *buf;
+        res = ho_valid_instruction(program, &instr);
+        if (res != NO_ERR)
+        {
+            return ERR_EXPECTED_INSTRUCTION;
+        }
+
         // Store the lines, they will be parsed in the second pass
         // count the characters until a newline
         int i = 0;
@@ -1812,6 +1820,29 @@ int ho_parse_push(horizon_program_t *program, char **buf)
     return ERR_NOT_IMPLEMENTED;
 }
 
+// Returns NO_ERR if the next token is a valid instruction
+int ho_valid_instruction(horizon_program_t *program, char **buf)
+{
+    char *instr = *buf;
+    uint32_t tmp;
+
+    // Since NO_ERR == 0, we can do some short-circuiting:
+    // if any match function returns NO_ERR, return NO_ERR
+    if (!(
+        ho_match_noop(&tmp, &instr) &&
+        ho_match_alu(&tmp, &instr) &&
+        ho_match_pop(&tmp, &instr) &&
+        ho_match_not(&tmp, &instr) &&
+        ho_match_store(&tmp, &instr) &&
+        ho_match_load(&tmp, &instr) &&
+        ho_match_cond(&tmp, &instr) &&
+        ho_match_push(&tmp, &instr)
+    ))
+        return NO_ERR;
+
+    return ERR_NO_MATCH;
+}
+
 // Increments program->len_code if the next line starts with an instruction
 // For the first parsing pass
 int ho_count_instruction(horizon_program_t *program, char **buf)
@@ -2019,9 +2050,72 @@ int ho_parse_instruction(horizon_program_t *program, char *buf)
         goto ho_parse_instruction_4;
 
     // Macro
-    // Replace args in definition and recurse into this function
+    // Replace args in definition and recurse into this function.
+    // As the instructions in a macro cannot be macros themselves, that is the virtual
+    // base case.
+    char token[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
+    uint32_t len_token = 0;
+    horizon_macro_t macro = { 0 };
+    res = ho_match_identifier(&len_token, &buf);
+    if (res != NO_ERR)
+        goto ho_parse_instruction_unknown;
+
+    strncpy(token, buf, len_token);
+    buf += len_token;
+    if (ho_get_macro(*program, &macro, token))
+    {
+        char *expanded = malloc((HORIZON_IDENT_MAX_LEN + 1) * 4);
+        char **argv;
+        if (macro.argc) argv = malloc(sizeof(char *) * macro.argc);
+
+        // Get arguments
+        ho_match_whitespace(&buf);
+        for (int i = 0; i < macro.argc; i++)
+        {
+            argv[i] = malloc(HORIZON_IDENT_MAX_LEN + 1);
+            for (int j = 0; j <= HORIZON_IDENT_MAX_LEN && *buf != ' ' && *buf != '\t' && *buf != '\n' && *buf != '\0'; j++)
+            {
+                argv[i][j] = *buf;
+                buf++;
+            }
+            if (strlen(argv[i]) == 0)
+                return ERR_TOO_FEW_ARGUMENTS;
+            ho_match_whitespace(&buf);
+        }
+
+        // Replace arguments in each line of the macro and parse as an instruction
+        for (int i = 0; i < macro.len; i++)
+        {
+            strncpy(expanded, macro.lines[i], (HORIZON_IDENT_MAX_LEN + 1) * 4 - 1);
+
+            for (int j = 0; j < macro.argc; j++)
+            {
+                // should be long enough
+                char placeholder[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
+                sprintf(placeholder, "$%d$", j + 1);
+
+                str_replace(expanded, (HORIZON_IDENT_MAX_LEN + 1) * 4, placeholder, argv[j]);
+            }
+
+            // On error break so the error message can be returned
+            res = ho_parse_instruction(program, expanded);
+            if (res != NO_ERR)
+                break;
+        }
+
+        // cleanup
+        free(expanded);
+        if (macro.argc)
+        {
+            for (int i = 0; i < macro.argc; i++)
+                free(argv[i]);
+            free(argv);
+        }
+        return res;
+    }
 
     // Fallthrough
+ho_parse_instruction_unknown:
     ho_add_code(program, 0);
     return ERR_UNKNOWN_INSTRUCTION;
 }
@@ -2145,6 +2239,9 @@ void ho_parser_perror(char *msg, int error, int line)
         case ERR_TOO_MANY_ARGUMENTS:
             printf("got more arguments than expected");
             break;
+        case ERR_TOO_FEW_ARGUMENTS:
+            printf("got fewer arguments than expected");
+            break;
         case ERR_EXPECTED_COMMENT:
             printf("expected a comment");
             break;
@@ -2171,6 +2268,9 @@ void ho_parser_perror(char *msg, int error, int line)
             break;
         case ERR_EXPECTED_IMM16:
             printf("expected an 16-bit immediate value");
+            break;
+        case ERR_EXPECTED_INSTRUCTION:
+            printf("expected an instruction (no directives or macros)");
             break;
         default:
             printf("%d", error);

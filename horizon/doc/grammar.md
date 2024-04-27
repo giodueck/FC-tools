@@ -19,7 +19,7 @@ macrodef    : macroline newline macrodef
             ;
 
 macroline   : . instruction // with the macro parameters used like shell script
-            ;               // arguments: $1, $2 ...
+            ;               // arguments: $1$, $2$ ...
 
 (pseudo grammar definitions)
 comment     : // ';' until the end of the line

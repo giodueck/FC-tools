@@ -39,6 +39,8 @@
 #define ERR_EXPECTED_FORMAT_6           131
 #define ERR_EXPECTED_IMM8               132
 #define ERR_EXPECTED_IMM16              133
+#define ERR_EXPECTED_INSTRUCTION        134
+#define ERR_TOO_FEW_ARGUMENTS           135
 
 #define HORIZON_IDENT_MAX_LEN 255
 
@@ -221,6 +223,7 @@ int ho_parse_alu(horizon_program_t *program, char **buf);
 int ho_parse_ram(horizon_program_t *program, char **buf);
 int ho_parse_cond(horizon_program_t *program, char **buf);
 int ho_parse_push(horizon_program_t *program, char **buf);
+int ho_valid_instruction(horizon_program_t *program, char **buf);
 int ho_count_instruction(horizon_program_t *program, char **buf);
 int ho_parse_instruction(horizon_program_t *program, char *buf);
 int ho_parse_statement(horizon_program_t *program, int *lines_consumed, char **buf);

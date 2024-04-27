@@ -115,26 +115,30 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     // }
     // printf("\nUnparsed text: %s\n", program_buf);
 
-    printf("Instructions:\n");
+    // printf("Instructions:\n");
+    char jmp_start_instr[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
+    sprintf(jmp_start_instr, "JMP #%d\n", program.code_start + 1);
+    ho_parse_instruction(&program, jmp_start_instr);
     for (int i = 0; i < program.len_code_lines; i++)
     {
-        printf("  ");
-        for (int j = 0; program.code_lines[i][j] != '\n' && program.code_lines[i][j] != '\0'; j++)
-        {
-            putchar(program.code_lines[i][j]);
-        }
+        // printf("  ");
+        // for (int j = 0; program.code_lines[i][j] != '\n' && program.code_lines[i][j] != '\0'; j++)
+        // {
+        //     putchar(program.code_lines[i][j]);
+        // }
 
         int res = ho_parse_instruction(&program, program.code_lines[i]);
-        printf("\n");
-        if (res == NO_ERR || res == ERR_EOF)
+        // printf("\n");
+        if (!(res == NO_ERR || res == ERR_EOF))
         {
-            printf("    code <%08x> <%d>", (int32_t) ((int32_t)0xFFFFFFFF & program.code[i]), (int32_t) ((int32_t)0xFFFFFFFF & program.code[i]));
+            ho_parser_perror(NULL, res, i);
         }
-        else ho_parser_perror(NULL, res, i);
+        // else
+        //     printf("    code <%08x> <%d>", (int32_t) ((int32_t)0xFFFFFFFF & program.code[i]), (int32_t) ((int32_t)0xFFFFFFFF & program.code[i]));
 
-        printf("\n");
+        // printf("\n");
     }
-    printf("Program length: %d\n", program.len_code_lines);
+    // printf("Program length: %d\n", program.len_code_lines);
     // printf("Program start instruction: %d\n", program.code_start);
     // printf("Program name:\n");
     // if (program.name)
@@ -155,6 +159,12 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     //         printf("    %s\n", program.macros[i].lines[j]);
     //     }
     // }
+
+    // Debug: output program binary
+    for (int i = 0; i < program.len_code; i++)
+    {
+        printf("%08X  %d\n", (uint32_t) (program.code[i] & 0xFFFFFFFF), (int) program.code[i]);
+    }
 
     horizon_program_t *ret = malloc(sizeof(horizon_program_t));
     *ret = program;
