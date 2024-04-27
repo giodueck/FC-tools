@@ -8,8 +8,8 @@ Currently there exists:
     - [x] Parsing/compiling to internal representation
     - [x] Executing compiled programs
 - Horizon
-    - [ ] **WIP** Parsing/compiling to internal representation
-    - [ ] Compiling to blueprint string
+    - [x] Parsing/compiling to internal/binary representation
+    - [ ] **WIP** Compiling to blueprint string
     - [ ] Executing compiled programs
 - Graphical emulator
     - [ ] Graphical program to run programs interactively
@@ -21,6 +21,16 @@ For now, the program is CLI only, the commands are listed with:
 ```shell
 $ ./fctools help
 ```
+> Note:
+> fctools as a single binary is deprecated and will be removed soon. The idea of one complicated binary
+> with several commands didn't sit right with me. Instead, a compiler and a runner will be available
+> separately. Unix philosophy and whatnot
+
+To compile a Horizon program use `fcc`:
+```shell
+$ ./fcc -h
+```
+
 # Building
 Dependencies:
 - SDL2

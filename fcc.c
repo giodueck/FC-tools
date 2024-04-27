@@ -21,13 +21,14 @@ int opt;
 extern char *optarg;
 extern int optopt;
 
-const char *optstring = ":f:a:bo:";
-const char *req_opt = "ynnn";
+const char *optstring = ":f:a:bo:h";
+const char *req_opt = "ynnnn";
 const char *opt_help[] = {
     "Filename of the program. May be passed without the flag as well",
     "Architecture: overture or horizon (default: horizon)",
     "Generate only raw binary output (.bin output)",
     "Output file name (default: a.out)",
+    "Print this help menu and exit",
 };
 
 void help()
@@ -107,6 +108,9 @@ int main(int argc, char **argv)
         case 'o':
             strncpy(output_filename, optarg, BUFSIZ - 1);
             break;
+        case 'h':
+            help();
+            return EXIT_SUCCESS;
         case ':':
             error = ERR_NO_ARG;
             help();
@@ -146,7 +150,7 @@ int main(int argc, char **argv)
         fclose(fd);
     } else
     {
-        perror("fopen");
+        perror("fcc");
         return EXIT_FAILURE;
     }
 
@@ -160,7 +164,7 @@ int main(int argc, char **argv)
         fclose(fd);
     } else
     {
-        perror("fopen");
+        perror("fcc");
         return EXIT_FAILURE;
     }
 
@@ -172,7 +176,7 @@ int main(int argc, char **argv)
         fclose(fd);
     } else
     {
-        perror("fopen");
+        perror("fcc");
         return EXIT_FAILURE;
     }
 
