@@ -1,2 +1,6 @@
 fctools
+fcc
+
 test
+*.out
+*.bin

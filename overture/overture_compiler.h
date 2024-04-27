@@ -5,6 +5,10 @@
 
 #include "../program.h"
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
 typedef struct {
     int arch;
 

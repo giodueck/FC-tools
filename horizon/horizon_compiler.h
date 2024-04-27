@@ -11,21 +11,6 @@ struct horizon_compiler_opt {
     uint8_t raw_output;
 };
 
-// Error definitions
-enum horizon_errors {
-    // No error
-    HOR_OK,
-
-    // Implementation related
-    HOR_ERR_NOT_IMPLEMENTED,
-
-    // Parsing related
-
-    // Compilation related
-
-    // Runtime errors
-};
-
 // Parse program to build the symbol table and check for errors
 // Returns the pointer to a newly allocated horizon_program_t
 // If there are any errors, they will be added to the err_array, as many as
@@ -41,9 +26,5 @@ void horizon_free(horizon_program_t *program);
 // destination path dst_filename.
 // The options struct changes the way the procedure operates
 void horizon_compile(const char *dst_filename, const char *src_filename, struct horizon_compiler_opt *options);
-
-// Print formatted error message to the console
-// error can be any value of enum horizon_errors
-void horizon_perror(int error);
 
 #endif // HORIZON_COMPILER_H

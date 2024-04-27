@@ -1,8 +1,6 @@
 #ifndef FC_OVERTURE_H
 #define FC_OVERTURE_H
 
-#define DEBUG
-
 #include <stdint.h>
 #include <stdio.h>
 

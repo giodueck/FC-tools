@@ -5,6 +5,10 @@
 #include <stdint.h>
 #include "../program.h"
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
+
 #define ERR_NO_MATCH                    100
 #define ERR_OUT_OF_RANGE_8              101
 #define ERR_OUT_OF_RANGE_16             102

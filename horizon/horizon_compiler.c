@@ -161,9 +161,12 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     // }
 
     // Debug: output program binary
-    for (int i = 0; i < program.len_code; i++)
+    if (DEBUG)
     {
-        printf("%08X  %d\n", (uint32_t) (program.code[i] & 0xFFFFFFFF), (int) program.code[i]);
+        for (int i = 0; i < program.len_code; i++)
+        {
+            printf("%08X  %d\n", (uint32_t) (program.code[i] & 0xFFFFFFFF), (int) program.code[i]);
+        }
     }
 
     horizon_program_t *ret = malloc(sizeof(horizon_program_t));
@@ -202,32 +205,6 @@ void horizon_free(horizon_program_t *program)
 // The options struct changes the way the procedure operates
 void horizon_compile(const char *dst_filename, const char *src_filename, struct horizon_compiler_opt *options)
 {
-    horizon_perror(HOR_ERR_NOT_IMPLEMENTED);
+    printf("not implemented\n");
     return;
-}
-
-// Print formatted error message to the console
-void horizon_perror(int error)
-{
-    printf("Error: ");
-
-    switch (error)
-    {
-        // No error
-        case HOR_OK:
-            printf("\r       \r");
-            break;
-
-        // Implementation
-        case HOR_ERR_NOT_IMPLEMENTED:
-            printf("not implemented\n");
-            fflush(stdout);
-            break;
-
-        // Compiling
-
-        // Runtime
-        default:
-            printf("unknown error code\n");
-    }
 }

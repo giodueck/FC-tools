@@ -249,21 +249,6 @@ int overture_parse(FILE *fd)
         }
     }
 
-    #ifdef DEBUG
-    printf("## First Pass ##\n");
-    printf("Code size: %d\n", code_len);
-    for (int i = 0; i < code_len; i++)
-    {
-        printf("%d ", code[i]);
-    }
-    printf("\n");
-    for (int i = 0; i < program.len_symbols; i++)
-    {
-        printf("%s: %u\n", program.symbols[i].name, program.symbols[i].value);
-    }
-    printf("\n");
-    #endif
-
     // Second pass: replace labels with immediates, instructions
     i = 0;
     for (int ci = 0; ci < program.len_code; ci++, i++)
@@ -292,15 +277,6 @@ int overture_parse(FILE *fd)
             program.code[ci] = op;
         }
     }
-
-    #ifdef DEBUG
-    printf("## Second Pass ##\n");
-    for (int i = 0; i < code_len; i++)
-    {
-        printf("%d ", code[i]);
-    }
-    printf("\n\n");
-    #endif
 
     return !(error_count == 0);
 }
