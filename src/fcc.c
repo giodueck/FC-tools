@@ -56,15 +56,15 @@ void help()
     }
 }
 
-static horizon_program_t *program = { 0 };
+static horizon_program_t *ho_program = { 0 };
 int parse(FILE *fd, int arch)
 {
     if (arch == ARCH_HORIZON)
     {
-        program = horizon_parse(fd, NULL, 0);
-        if (program->error_count)
+        ho_program = horizon_parse(fd, NULL, 0);
+        if (ho_program->error_count)
         {
-            printf("Program contains at least %d errors, exiting\n", program->error_count);
+            printf("Program contains at least %d errors, exiting\n", ho_program->error_count);
             return ERR_COMPILATION_ERR;
         }
     } else
@@ -127,7 +127,9 @@ int main(int argc, char **argv)
     {
         // optind must be the file to look for
         if (optind < argc)
+        {
             strncpy(filename, argv[optind], BUFSIZ - 1);
+        }
         else
         {
             error = ERR_MISSING_OPT;
@@ -139,50 +141,59 @@ int main(int argc, char **argv)
 
     // Parse program
     FILE *fd;
-    if ((fd = fopen(filename, "r")) != NULL)
+    if (arch == ARCH_HORIZON)
     {
-        if (arch == ARCH_OVERTURE)
+        if ((fd = fopen(filename, "r")) != NULL)
         {
-            printf("Overture programs are not supported for compilation\n");
+            if (arch == ARCH_OVERTURE)
+            {
+                printf("Overture programs are not supported for compilation\n");
+                return EXIT_FAILURE;
+            }
+            int res = parse(fd, arch);
+            fclose(fd);
+        } else
+        {
+            perror("fcc");
             return EXIT_FAILURE;
         }
-        int res = parse(fd, arch);
-        fclose(fd);
-    } else
-    {
-        perror("fcc");
-        return EXIT_FAILURE;
     }
 
     // Compile output
     char binout[BUFSIZ] = { 0 };
     sprintf(binout, "%s.bin", output_filename);
-    if ((fd = fopen(binout, "wb")) != NULL)
+    if (arch == ARCH_HORIZON)
     {
-        fwrite(&program->code, sizeof(uint32_t), program->len_code, fd);
+        if ((fd = fopen(binout, "wb")) != NULL)
+        {
+            fwrite(&ho_program->code, sizeof(uint32_t), ho_program->len_code, fd);
 
-        fclose(fd);
-    } else
-    {
-        perror("fcc");
-        return EXIT_FAILURE;
+            fclose(fd);
+        } else
+        {
+            perror("fcc");
+            return EXIT_FAILURE;
+        }
     }
 
     // Output compiled BP string
-    if (!output_binary && ((fd = fopen(output_filename, "w")) != NULL))
+    if (arch == ARCH_HORIZON)
     {
-        fwrite(&program->code, sizeof(uint32_t), program->len_code, fd);
+        if (!output_binary && ((fd = fopen(output_filename, "w")) != NULL))
+        {
+            fwrite(&ho_program->code, sizeof(uint32_t), ho_program->len_code, fd);
 
-        fclose(fd);
-    } else
-    {
-        perror("fcc");
-        return EXIT_FAILURE;
+            fclose(fd);
+        } else
+        {
+            perror("fcc");
+            return EXIT_FAILURE;
+        }
     }
 
     // Clean up
     if (arch == ARCH_HORIZON)
-        horizon_free(program);
+        horizon_free(ho_program);
 
     return EXIT_SUCCESS;
 }
