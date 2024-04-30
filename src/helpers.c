@@ -151,16 +151,16 @@ static const int ascii_to_base64[256] =
 // On successful decoding returns 0, if an error was encountered with the data, -1.
 // decoded: destination buffer for decoded bytes data. Assumed to be big enough, does not null-terminate.
 // b64_data: null-terminated string of base 64 data to decode.
-int base64_decode(char *decoded, char *b64_data)
+int base64_decode(char *decoded, const char *b64_data)
 {
     int j = 0;
     int qi = 0;
     char quad[4] = { 0 };
     int pad = 0;
 
-    for (int i = 0; b64_data[i] != '\0' && pad == 0; i++)
+    for (int i = 0; b64_data[i] != '\0'; i++)
     {
-        if (ascii_to_base64[b64_data[i]] == 64)
+        if (ascii_to_base64[b64_data[i]] == 64 && b64_data[i] != '=')
             return -1;
 
         quad[qi++] = ascii_to_base64[b64_data[i]];
@@ -184,12 +184,12 @@ int base64_decode(char *decoded, char *b64_data)
 // encoded: destination buffer for encoded base 64 null-terminated string. Assumed to be big enough.
 // bytes_data: bytes buffer to encode, not necessarily null-terminated.
 // bytes_len: length of bytes_data.
-int base64_encode(char *encoded, char *bytes_data, size_t bytes_len)
+int base64_encode(char *encoded, const char *bytes_data, size_t bytes_len)
 {
     size_t len = base64_encode_len(bytes_len);
     int j = 0;
     int ti = 0;
-    char triplet[3] = { 0 };
+    unsigned char triplet[3] = { 0 };
 
     // Iterate through source array and group triplets
     // When a triplet is complete, encode it and empty the triplet array
@@ -235,7 +235,7 @@ int base64_encode(char *encoded, char *bytes_data, size_t bytes_len)
 // For an invalid length, returns -1.
 // b64_data: base 64 encoded string.
 // b64_len: length of base 64 encoded string.
-size_t base64_decode_len(char *b64_data, size_t b64_len)
+size_t base64_decode_len(const char *b64_data, size_t b64_len)
 {
     // Encoded string must be divisible by 4
     if (b64_len & 0x3)
@@ -258,7 +258,7 @@ size_t base64_decode_len(char *b64_data, size_t b64_len)
     return upper;
 }
 
-// Length of encoded base 64 string for the giveb length of bytes data.
+// Length of encoded base 64 string for the given length of bytes data.
 // bytes_len: length of bytes data.
 size_t base64_encode_len(size_t bytes_len)
 {
