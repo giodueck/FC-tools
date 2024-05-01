@@ -9,7 +9,7 @@
 - [x] Parse macros
 
 ## Second pass
-- [ ] Instruction parsing
+- [x] Instruction parsing
 
 ## Third pass
-- [ ] Translate machine code into BP-string
+- [x] Translate machine code into BP-string

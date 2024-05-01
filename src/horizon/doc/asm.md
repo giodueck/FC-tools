@@ -1,8 +1,82 @@
 # Horizon ASM version 2
+An update on the assembly in [factorio-computing](https://github.com/giodueck/factorio-computing/blob/main/horizon/doc/asm-design.md)
 
-## Instructions
-Syntax is the same as before, the instruction's name followed by its arguments.
-The same applies to macros, as they are basically instructions when used.
+## General considerations
+Casing doesn't matter and whitespace (except for newlines) will be ignored. Tokens are
+separated by whitespace. One sentence per line, newline character for line endings.
+
+## Registers
+There are 12 general-purpose registers named `R0`, `R1`, ..., `R11`.
+`AR` is the address register used for load and store operations, `SP` is the stack
+pointer, `LR` is the link register, and `PC` is the program counter which
+is only writable by jump instructions.
+
+`NIL` is a pseudo-register which is defined as `255` and does not really exist, causing
+reads from it to result in `0` and writes to it to be discarded. This can be used to get
+a zero or when only the secondary effects of an instruction are desired.
+
+Addressing a non-existent register will cause the same behavior as `NIL` but is considered
+an error.
+
+#### The flag register
+> This special register cannot be written to or read from directly, it can be set by
+> some instructions and is used to evaluate conditional instructions, like `jmp`.
+
+The flags register is set by instructions which have the `s` suffix. The flags are
+
+Name | Description
+-----|------------
+`Z`  | Result is zero
+`N`  | Result is negative
+`V`  | Overflow or underflow occurred
+
+`V` is like the carry flag, but all operations are signed anyways so `C` is not needed.
+
+> In Factorio, memory registers can hold several signals at once, meaning the signals can be
+> held in 3 different signals, saving several bitwise operations when using and storing them.
+
+## Memory layout
+Program instructions and data are all stored in RAM. The layout is as follows:
+
+0. `jmp start` instruction, automatically added to skip data section.
+1. Declared data section
+2. Program section, instructions
+3. Free memory
+
+The free memory space starting address depends on the previous sections, and is pointed to by
+the constant `ram_start`. A program can then work with offsets from this address.
+
+Memory is in no way protected, self modifying code, buffer overflows, and executing any memory
+address are all possible and are the responsibility of the programmer.
+
+## Immediate values
+Immediate values can be used for some instructions and are written as
+```
+#num
+```
+
+For example
+```
+#10   ; decimal
+#0644 ; octal
+#0x7F ; hexacedimal
+```
+
+The number can be prefixed with `0x` to be interpreted as a hexadecimal number,
+or `0` to be interpreted as an octal number.
+
+## Labels
+Code labels are constants holding immediate values, and are written as
+```
+label:
+```
+and have to be placed in a line by themselves. The value they represent is the address
+of the next instruction below the label.
+
+Labels can be used wherever immediate values can, and are invoqued simply by their name:
+```
+jmp label
+```
 
 ## Directives
 Preprocessor and data section directives were replaced with directives.
@@ -110,16 +184,22 @@ The builtin macros include:
 - `movs`
 - `mov16`
 
-### @rep...@end
-The `@rep` and `@end` preprocessor keywords were scrapped, as there seems to be no
-real problem they meaningfully solve.
+The `mov16` instruction, as an example, would be defined as
+```
+; $1$ = Rd
+; $2$ = imm16
+.macro mov16 2
+. push $2$
+. pop $1$
+
+```
 
 ### Include
-Directives for the unimplemented include concept may be added later.
+**Not implemented**
+A directive for the unimplemented textual include concept may be added later.
 
-## Labels
-Labels are as they were previously:
-```
-identifier:
-```
-where `identifier` is as defined above.
+## Instructions
+Syntax is the same as before, the instruction's name followed by its arguments.
+The same applies to macros, as they are identical to instructions in their usage.
+
+For a breakdown of the available instructions, see `instructions_machine_code.md`.
