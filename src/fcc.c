@@ -37,7 +37,7 @@ void help()
     char curopt = 0;
     int nopt = 0;
 
-    printf("Usage: fctools run [options]\n");
+    printf("Usage: fcc [options]\n");
     printf("\nAvailable options:\n");
     for (int i = 0; i < strlen(optstring); i++)
     {
