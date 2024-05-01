@@ -16,6 +16,14 @@ Currently there exists:
     - [ ] Step by step debugging
     - [ ] Inspect register and RAM state
 
+# Building
+Dependencies:
+- SDL2
+- SDL2_ttf
+
+Then run `make help` for a list of make targets. `make` will compile the program without optimizations
+and with debug symbols, while `make release` won't.
+
 # Execution
 For now, the program is CLI only, the commands are listed with:
 ```shell
@@ -31,13 +39,8 @@ To compile a Horizon program use `fcc`:
 $ ./fcc -h
 ```
 
-# Building
-Dependencies:
-- SDL2
-- SDL2_ttf
+# Blueprint strings
+The blueprints for the actual computers can be found in the `bp` directory.
 
-Then run
-```shell
-$ make help
-```
-for a list of make targets. `make` will compile the program without optimizations and with debug symbols, while `make release` won't.
+For the blueprints of Everest, the precursor to Horizon, refer to
+[factorio-computing](https://github.com/giodueck/factorio-computing).

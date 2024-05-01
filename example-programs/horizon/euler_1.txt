@@ -1,12 +1,7 @@
-;; Project Euler 1
-; Sum of all numbers below 1000 divisible by 3 or 5
+.name ; Euler Project 1
+.desc ; Sum of all numbers below 1000 divisible by 3 or 5
 
-.macro
-
-@const upper_limit 1000
-@const upper_limit 1000
-
-.program
+.start
 
 ; reset stack
 mov sp nil
