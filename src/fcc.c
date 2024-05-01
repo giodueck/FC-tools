@@ -1,5 +1,6 @@
 // Factorio computer compiler
 
+#include "bp_creator.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -159,35 +160,47 @@ int main(int argc, char **argv)
         }
     }
 
-    // Compile output
-    char binout[BUFSIZ] = { 0 };
-    sprintf(binout, "%s.bin", output_filename);
-    if (arch == ARCH_HORIZON)
+    // Output
+    if (output_binary)
     {
-        if ((fd = fopen(binout, "wb")) != NULL)
+        char binout[BUFSIZ] = { 0 };
+        sprintf(binout, "%s.bin", output_filename);
+        if (arch == ARCH_HORIZON)
         {
-            fwrite(&ho_program->code, sizeof(uint32_t), ho_program->len_code, fd);
+            if ((fd = fopen(binout, "wb")) != NULL)
+            {
+                fwrite(&ho_program->code, sizeof(uint32_t), ho_program->len_code, fd);
 
-            fclose(fd);
-        } else
-        {
-            perror("fcc");
-            return EXIT_FAILURE;
+                fclose(fd);
+            } else
+            {
+                perror("fcc");
+                return EXIT_FAILURE;
+            }
         }
     }
-
-    // Output compiled BP string
-    if (arch == ARCH_HORIZON)
+    else
     {
-        if (!output_binary && ((fd = fopen(output_filename, "w")) != NULL))
+        // Output compiled BP string
+        if (arch == ARCH_HORIZON)
         {
-            fwrite(&ho_program->code, sizeof(uint32_t), ho_program->len_code, fd);
+            if (((fd = fopen(output_filename, "w")) != NULL))
+            {
+                int32_t *code_array = malloc(sizeof(int32_t) * ho_program->len_code);
+                for (int i = 0; i < ho_program->len_code; i++)
+                    code_array[i] = ho_program->code[i] & 0xFFFFFFFF;
 
-            fclose(fd);
-        } else
-        {
-            perror("fcc");
-            return EXIT_FAILURE;
+                char *bp_str = bp_replace(rom_11_bit, is_rom_11_placeholder, code_array, ho_program->len_code);
+
+                fwrite(bp_str, 1, strlen(bp_str), fd);
+                free(code_array);
+                free(bp_str);
+                fclose(fd);
+            } else
+            {
+                perror("fcc");
+                return EXIT_FAILURE;
+            }
         }
     }
 

@@ -9,8 +9,8 @@ Currently there exists:
     - [x] Executing compiled programs
 - Horizon
     - [x] Parsing/compiling to internal/binary representation
-    - [ ] **WIP** Compiling to blueprint string
-    - [ ] Executing compiled programs
+    - [x] Compiling to blueprint string
+    - [ ] **WIP** Executing compiled programs
 - Graphical emulator
     - [ ] Graphical program to run programs interactively
     - [ ] Step by step debugging
