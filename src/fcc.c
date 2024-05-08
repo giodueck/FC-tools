@@ -169,7 +169,8 @@ int main(int argc, char **argv)
         {
             if ((fd = fopen(binout, "wb")) != NULL)
             {
-                fwrite(&ho_program->code, sizeof(uint32_t), ho_program->len_code, fd);
+                for (int i = 0; i < ho_program->len_code; i++)
+                    fwrite(ho_program->code + i, sizeof(uint32_t), 1, fd);
 
                 fclose(fd);
             } else
