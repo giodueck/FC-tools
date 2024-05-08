@@ -169,6 +169,56 @@ void hovm_execute_alu(horizon_vm_t *vm, int32_t ir)
     }
 }
 
+// Execute any jump instruction, with or without immediate address
+// Set PC to the jump argument if the condition is true, or increment if false
+void hovm_execute_cond(horizon_vm_t *vm, int32_t ir)
+{
+    int imm_arg = ir & 0x80000000;
+    int rn = ir & 0xFF;
+    uint16_t imm16 = ir & 0xFFFF;
+
+    uint16_t A = (imm_arg) ? imm16 : hovm_read_reg(vm, rn);
+
+    vm->registers[HO_PC]++;
+
+    switch ((ir >> 24) & 0x7F)
+    {
+        case HO_JEQ:
+            if (vm->z) vm->registers[HO_PC] = A;
+            break;
+        case HO_JNE:
+            if (!vm->z) vm->registers[HO_PC] = A;
+            break;
+        case HO_JLT:
+            if (vm->n != vm->v) vm->registers[HO_PC] = A;
+            break;
+        case HO_JGT:
+            if (!vm->z && vm->n == vm->v) vm->registers[HO_PC] = A;
+            break;
+        case HO_JLE:
+            if (vm->z && vm->n != vm->v) vm->registers[HO_PC] = A;
+            break;
+        case HO_JGE:
+            if (vm->n == vm->v) vm->registers[HO_PC] = A;
+            break;
+        case HO_JNG:
+            if (vm->n) vm->registers[HO_PC] = A;
+            break;
+        case HO_JPZ:
+            if (!vm->n) vm->registers[HO_PC] = A;
+            break;
+        case HO_JVS:
+            if (vm->v) vm->registers[HO_PC] = A;
+            break;
+        case HO_JVC:
+            if (!vm->v) vm->registers[HO_PC] = A;
+            break;
+        case HO_JMP:
+            vm->registers[HO_PC] = A;
+            break;
+    }
+}
+
 // Load program into the first addresses in the VM's RAM
 // Returns number of words written
 int hovm_load_rom(horizon_vm_t *vm, int32_t *program, size_t size)
@@ -201,9 +251,16 @@ int hovm_run(horizon_vm_t *vm)
         // Get next instruction using PC
         ir = vm->ram[vm->registers[HO_PC]];
 
+        // HALT = JMP PC
+        if (ir == 0x2A000F00)
+            return vm->registers[HO_R0];
+
         // Decode and execute
         switch ((ir >> 24) & 0x7F)  // ignore imm flag for this step of decoding
         {
+            case HO_NOOP:
+                vm->registers[HO_PC]++;
+                break;
             case HO_ADD: case HO_ADDS:
             case HO_SUB: case HO_SUBS:
             case HO_MUL: case HO_MULS:
@@ -220,6 +277,19 @@ int hovm_run(horizon_vm_t *vm)
             case HO_HCAT: case HO_HCATS:
                 hovm_execute_alu(vm, ir);
                 vm->registers[HO_PC]++;
+                break;
+            case HO_JEQ:
+            case HO_JNE:
+            case HO_JLT:
+            case HO_JGT:
+            case HO_JLE:
+            case HO_JGE:
+            case HO_JNG:
+            case HO_JPZ:
+            case HO_JVS:
+            case HO_JVC:
+            case HO_JMP:
+                hovm_execute_cond(vm, ir);
                 break;
         }
     }
