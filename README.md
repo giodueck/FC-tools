@@ -39,5 +39,6 @@ binary file created with `fcc` beforehand.
 # Blueprint strings
 The blueprints for the actual computers can be found in the `bp` directory.
 
-For the blueprints of Everest, the precursor to Horizon, refer to
+For the blueprints of Overture, an 8-bit architecture inspired by the one featured in the game Turing Complete,
+or Everest, the precursor to Horizon, refer to
 [factorio-computing](https://github.com/giodueck/factorio-computing).
