@@ -39,6 +39,13 @@ To compile a Horizon program use `fcc`:
 $ ./fcc -h
 ```
 
+To run a Horizon program use `fcemu`:
+```shell
+$ ./fcemu -h
+```
+The input file can be a plaintext program, in which case it will be compiled with `fcc`, or a compiled
+binary file created with `fcc` beforehand.
+
 # Blueprint strings
 The blueprints for the actual computers can be found in the `bp` directory.
 
