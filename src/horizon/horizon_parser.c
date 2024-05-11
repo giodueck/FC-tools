@@ -229,9 +229,23 @@ int ho_add_code(horizon_program_t *program, int64_t code)
 }
 
 // Initilizes all regex used by the parser
-int ho_init_regex()
+// If free_instead is not 0, frees the regex variables instead
+int ho_init_regex(int free_instead)
 {
     static int reret = INT_MAX;
+    if (free_instead)
+    {
+        if (reret != INT_MAX)
+        {
+            regfree(&horizon_regex.literal_re);
+            regfree(&horizon_regex.directive_re);
+            regfree(&horizon_regex.identifier_re);
+            regfree(&horizon_regex.instruction_re);
+        }
+
+        reret = INT_MAX;
+        return 0;
+    }
     if (reret == INT_MAX)
     {
         // Match only the literal, which must be at the beginning of the string
@@ -289,7 +303,7 @@ int ho_match_literal(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.literal_re;
     }
 
@@ -532,7 +546,7 @@ int ho_match_identifier(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.identifier_re;
     }
 
@@ -564,7 +578,7 @@ int ho_match_directive(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.directive_re;
     }
 
@@ -713,7 +727,7 @@ int ho_match_noop(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.instruction_re;
     }
 
@@ -741,7 +755,7 @@ int ho_match_not(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.instruction_re;
     }
 
@@ -780,7 +794,7 @@ int ho_match_pop(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.instruction_re;
     }
 
@@ -811,7 +825,7 @@ int ho_match_alu(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.instruction_re;
     }
 
@@ -995,7 +1009,7 @@ int ho_match_push(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.instruction_re;
     }
 
@@ -1023,7 +1037,7 @@ int ho_match_cond(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.instruction_re;
     }
 
@@ -1111,7 +1125,7 @@ int ho_match_store(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.instruction_re;
     }
 
@@ -1156,7 +1170,7 @@ int ho_match_load(uint32_t *dest, char **buf)
     static int reret = INT_MAX;
     if (reret == INT_MAX)
     {
-        reret = ho_init_regex();
+        reret = ho_init_regex(0);
         regex = horizon_regex.instruction_re;
     }
 
@@ -1999,7 +2013,6 @@ int ho_count_instruction(horizon_program_t *program, char **buf)
 // a single line with a single instruction or macro
 int ho_parse_instruction(horizon_program_t *program, char *buf)
 {
-    char *start = buf;
     int res;
     uint32_t opcode;
 

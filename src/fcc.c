@@ -1,17 +1,15 @@
 // Factorio computer compiler
 
-#include "bp_creator.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
 
-#define DEBUG 1
-
 #include "horizon/horizon_compiler.h"
 #include "horizon/horizon_parser.h"
 #include "fcerrors.h"
 #include "program.h"
+#include "bp_creator.h"
 
 // Error reporting
 static char missing_arg = 0;
@@ -26,7 +24,7 @@ const char *optstring = ":f:a:bo:h";
 const char *req_opt = "ynnnn";
 const char *opt_help[] = {
     "Filename of the program. May be passed without the flag as well",
-    "Architecture: overture or horizon (default: horizon)",
+    "Architecture: currently only horizon is implemented (default: horizon)",
     "Generate only raw binary output (.bin output)",
     "Output file name (default: a.out)",
     "Print this help menu and exit",
@@ -34,7 +32,6 @@ const char *opt_help[] = {
 
 void help()
 {
-    char curopt = 0;
     int nopt = 0;
 
     printf("Usage: fcc [options]\n");
@@ -153,6 +150,8 @@ int main(int argc, char **argv)
             }
             int res = parse(fd, arch);
             fclose(fd);
+            if (res != 0)
+                return EXIT_FAILURE;
         } else
         {
             perror("fcc");

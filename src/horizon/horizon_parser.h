@@ -189,6 +189,10 @@ enum horizon_symbol_type {
 
 // Grammar rules
 
+// Initilizes all regex used by the parser
+// If free_instead is not 0, frees the regex variables instead
+int ho_init_regex(int free_instead);
+
 // Match means advance the buffer and insert the matched token's value into dest
 // Return values are errors
 

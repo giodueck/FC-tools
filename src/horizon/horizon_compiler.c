@@ -21,6 +21,7 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
 
     horizon_program_t program = { ARCH_HORIZON };
     char *program_buf = malloc(size + 1);
+    memset(program_buf, 0, size + 1);
 
     program.input_buf = program_buf;
 
@@ -68,7 +69,6 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     program.name = NULL;
     program.desc = NULL;
 
-    uint32_t num;
     int retval = NO_ERR;
 
     ho_add_builtin_macros(&program);
@@ -137,6 +137,8 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
 // Frees memory allocated by horizon_parse
 void horizon_free(horizon_program_t *program)
 {
+    ho_init_regex(1);
+
     if (!program)
         return;
     if (program->input_buf)
@@ -152,10 +154,20 @@ void horizon_free(horizon_program_t *program)
         free(program->data);
     if (program->code_lines)
         free(program->code_lines);
+    if (program->code_line_indices)
+        free(program->code_line_indices);
     if (program->desc)
         free(program->desc);
     if (program->code)
         free(program->code);
+    for (int i = 0; i < program->len_macros; i++)
+    {
+        for (int j = 0; j < program->macros[i].len; j++)
+            free(program->macros[i].lines[j]);
+        free(program->macros[i].lines);
+    }
+    if (program->macros)
+        free(program->macros);
     free(program);
     return;
 }
