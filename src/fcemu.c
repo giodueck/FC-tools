@@ -1,15 +1,15 @@
-// Factorio computer compiler
+// Factorio computer emulator
 
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <stdio.h>
 #include <getopt.h>
+#include <string.h>
 
+#include "fcerrors.h"
 #include "horizon/horizon_compiler.h"
 #include "horizon/horizon_parser.h"
-#include "fcerrors.h"
+#include "horizon/horizon_vm.h"
 #include "program.h"
-#include "bp_creator.h"
 
 // Error reporting
 static char missing_arg = 0;
@@ -20,13 +20,12 @@ int opt;
 extern char *optarg;
 extern int optopt;
 
-const char *optstring = ":f:a:bo:h";
-const char *req_opt = "ynnnn";
+const char *optstring = ":f:a:bh";
+const char *req_opt = "ynnn";
 const char *opt_help[] = {
     "Filename of the program. May be passed without the flag as well",
     "Architecture: currently only horizon is implemented (default: horizon)",
-    "Generate only raw binary output (.bin output)",
-    "Output file name (default: a.out)",
+    "Interpret input file as compiled bytecode",
     "Print this help menu and exit",
 };
 
@@ -34,7 +33,7 @@ void help()
 {
     int nopt = 0;
 
-    printf("Usage: fcc [options]\n");
+    printf("Usage: fcemu [options]\n");
     printf("\nAvailable options:\n");
     for (int i = 0; i < strlen(optstring); i++)
     {
@@ -77,9 +76,8 @@ int parse(FILE *fd, int arch)
 int main(int argc, char **argv)
 {
     char filename[BUFSIZ] = { 0 };
-    char output_filename[BUFSIZ] = "a.out";
     int arch = ARCH_HORIZON;
-    int output_binary = 0;
+    int input_binary = 0;
 
     while ((opt = getopt(argc, argv, optstring)) != -1)
     {
@@ -99,10 +97,7 @@ int main(int argc, char **argv)
             }
             break;
         case 'b':
-            output_binary = 1;
-            break;
-        case 'o':
-            strncpy(output_filename, optarg, BUFSIZ - 1);
+            input_binary = 1;
             break;
         case 'h':
             help();
@@ -136,75 +131,87 @@ int main(int argc, char **argv)
     }
     if (arch == ARCH_OVERTURE)
     {
-        printf("Overture programs are not supported for compilation\n");
+        printf("Overture programs are not supported for emulation\n");
         return EXIT_FAILURE;
     }
 
-    // Parse program
-    FILE *fd;
-    if (arch == ARCH_HORIZON)
-    {
-        if ((fd = fopen(filename, "r")) != NULL)
-        {
-            int res = parse(fd, arch);
-            fclose(fd);
-            if (res != 0)
-                return EXIT_FAILURE;
-        } else
-        {
-            perror("fcc");
-            return EXIT_FAILURE;
-        }
-    }
+    uint32_t *program = NULL;
+    size_t program_size = 0;
 
-    // Output
-    if (output_binary)
+    // Parse program if not given binary input
+    FILE *fd;
+    if (!input_binary)
     {
-        char binout[BUFSIZ + 4] = { 0 };
-        sprintf(binout, "%s.bin", output_filename);
         if (arch == ARCH_HORIZON)
         {
-            if ((fd = fopen(binout, "wb")) != NULL)
+            if ((fd = fopen(filename, "r")) != NULL)
             {
-                for (int i = 0; i < ho_program->len_code; i++)
-                    fwrite(ho_program->code + i, sizeof(uint32_t), 1, fd);
-
+                int res = parse(fd, arch);
                 fclose(fd);
+                if (res != 0)
+                    return EXIT_FAILURE;
+
+                program_size = ho_program->len_code;
+                program = malloc(sizeof(uint32_t) * program_size);
+                for (int i = 0; i < program_size; i++)
+                    program[i] = ho_program->code[i] & 0xFFFFFFFF;
+
+                horizon_free(ho_program);
             } else
             {
-                perror("fcc");
+                perror("fcemu");
                 return EXIT_FAILURE;
             }
         }
     }
+    // Read binary in
     else
     {
-        // Output compiled BP string
         if (arch == ARCH_HORIZON)
         {
-            if (((fd = fopen(output_filename, "w")) != NULL))
+            if ((fd = fopen(filename, "rb")) != NULL)
             {
-                int32_t *code_array = malloc(sizeof(int32_t) * ho_program->len_code);
-                for (int i = 0; i < ho_program->len_code; i++)
-                    code_array[i] = ho_program->code[i] & 0xFFFFFFFF;
+                fseek(fd, 0, SEEK_END);
+                program_size = ftell(fd);
+                fseek(fd, 0, SEEK_SET);
 
-                char *bp_str = bp_replace(rom_11_bit, is_rom_11_placeholder, code_array, ho_program->len_code);
-
-                fwrite(bp_str, 1, strlen(bp_str), fd);
-                free(code_array);
-                free(bp_str);
-                fclose(fd);
-            } else
-            {
-                perror("fcc");
-                return EXIT_FAILURE;
+                program = malloc(sizeof(uint32_t) * program_size);
+                fread(program, sizeof(uint32_t), program_size, fd);
             }
         }
     }
 
+    // Run program
+    if (program)
+    {
+        horizon_vm_t vm = { 0 };
+
+        hovm_load_rom(&vm, program, program_size);
+        hovm_run(&vm);
+
+        printf("Registers:\n");
+        printf("    R0  = %08x = %d\n", vm.registers[HO_R0], vm.registers[HO_R0]);
+        printf("    R1  = %08x = %d\n", vm.registers[HO_R1], vm.registers[HO_R1]);
+        printf("    R2  = %08x = %d\n", vm.registers[HO_R2], vm.registers[HO_R2]);
+        printf("    R3  = %08x = %d\n", vm.registers[HO_R3], vm.registers[HO_R3]);
+        printf("    R4  = %08x = %d\n", vm.registers[HO_R4], vm.registers[HO_R4]);
+        printf("    R5  = %08x = %d\n", vm.registers[HO_R5], vm.registers[HO_R5]);
+        printf("    R6  = %08x = %d\n", vm.registers[HO_R6], vm.registers[HO_R6]);
+        printf("    R7  = %08x = %d\n", vm.registers[HO_R7], vm.registers[HO_R7]);
+        printf("    R8  = %08x = %d\n", vm.registers[HO_R8], vm.registers[HO_R8]);
+        printf("    R9  = %08x = %d\n", vm.registers[HO_R9], vm.registers[HO_R9]);
+        printf("    R10 = %08x = %d\n", vm.registers[HO_R10], vm.registers[HO_R10]);
+        printf("    R11 = %08x = %d\n", vm.registers[HO_R11], vm.registers[HO_R11]);
+        printf("    AR  = %08x = %d\n", vm.registers[HO_AR], vm.registers[HO_AR]);
+        printf("    SP  = %08x = %d\n", vm.registers[HO_SP], vm.registers[HO_SP]);
+        printf("    LR  = %08x = %d\n", vm.registers[HO_LR], vm.registers[HO_LR]);
+        printf("    PC  = %08x = %d\n", vm.registers[HO_PC], vm.registers[HO_PC]);
+    }
+
+
     // Clean up
-    if (arch == ARCH_HORIZON)
-        horizon_free(ho_program);
+    if (program)
+        free(program);
 
     return EXIT_SUCCESS;
 }
