@@ -203,9 +203,11 @@ int ho_add_code_line(horizon_program_t *program, char *buf)
     {
         program->len_code_lines_space += 100;
         program->code_lines = realloc(program->code_lines, sizeof(uint32_t) * program->len_code_lines_space);
+        program->code_line_indices = realloc(program->code_line_indices, sizeof(int) * program->len_code_lines_space);
     }
 
     program->code_lines[program->len_code_lines] = buf;
+    program->code_line_indices[program->len_code_lines] = program->curr_line;
     program->len_code_lines++;
 
     return 0;
@@ -238,16 +240,6 @@ int ho_init_regex()
         {
             char errbuf[BUFSIZ] = "";
             regerror(reret, &horizon_regex.literal_re, errbuf, BUFSIZ);
-            fprintf(stderr, "ho_init_regex: %s\n", errbuf);
-            exit(1);
-        }
-
-        // Match only the register, which must be at the beginning of the string
-        reret = regcomp(&horizon_regex.register_re, "^\\(R[0-9]\\)\\|\\(R1[01]\\)\\|\\(AR\\)\\|\\(SP\\)\\|\\(LR\\)\\|\\(PC\\)\\|\\(NIL\\)", REG_ICASE);
-        if (reret)
-        {
-            char errbuf[BUFSIZ] = "";
-            regerror(reret, &horizon_regex.register_re, errbuf, BUFSIZ);
             fprintf(stderr, "ho_init_regex: %s\n", errbuf);
             exit(1);
         }
@@ -301,7 +293,7 @@ int ho_match_literal(uint32_t *dest, char **buf)
         regex = horizon_regex.literal_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     if (ret != 0)
@@ -396,63 +388,138 @@ int ho_match_imm16(uint32_t *dest, char **buf)
 // Match a register and set dest to its number
 int ho_match_register(uint32_t *dest, char **buf)
 {
-    static regex_t regex;
-    static int reret = INT_MAX;
-    if (reret == INT_MAX)
+    /* Finite state machine to replace regex
+     * States:
+     *  0: start
+     *  1: R matched
+     *  2: R1 matched // discarded, process this when encountering a '1' in state 1
+     *  3: A matched // discarded, analogous to 2
+     *  4: S matched // discarded, analogous to 2
+     *  5: L matched // discarded, analogous to 2
+     *  6: P matched // discarded, analogous to 2
+     *  7: N matched // discarded, analogous to 2
+     *  8: NI matched // discarded, analogous to 2
+     *  9: Register matched, expect non-alphanumeric
+     *  10: error
+    */
+    int state = 0;
+    int regnum;
+    int i = 0;
+
+    while (1)
     {
-        reret = ho_init_regex();
-        regex = horizon_regex.register_re;
+        if (state == 9)
+        {
+            switch ((*buf)[i])
+            {
+                case ' ': case '\t': case '\n': case '\0':
+                    *buf += i;
+                    *dest = regnum;
+                    return NO_ERR;
+                default:
+                    ERR_NO_MATCH;
+            }
+        }
+
+        switch ((*buf)[i])
+        {
+            case 'R':
+                if (state == 0)
+                {
+                    state = 1;
+                    i++;
+                    continue;
+                } // else
+                return ERR_NO_MATCH;
+            case '1':
+                if (state == 1)
+                {
+                    state = 9;
+                    regnum = (*buf)[i] - '0';
+                    i++;
+                    if ((*buf)[i] == '0' || (*buf)[i] == '1')
+                    {
+                        regnum = 10 + (*buf)[i] - '0';
+                        i++;
+                    }
+                    continue;
+                } // else
+                return ERR_NO_MATCH;
+            case '0': case '2': case '3': case '4':
+            case '5': case '6': case '7': case '8': case '9':
+                if (state == 1)
+                {
+                    state = 9;
+                    regnum = (*buf)[i] - '0';
+                    i++;
+                    continue;
+                } // else
+                return ERR_NO_MATCH;
+            case 'A':
+                if (state == 0)
+                {
+                    i++;
+                    if ((*buf)[i] != 'R')
+                        return ERR_NO_MATCH;
+                    i++;
+                    regnum = 12;
+                    state = 9;
+                    continue;
+                } // else
+                return ERR_NO_MATCH;
+            case 'S':
+                if (state == 0)
+                {
+                    i++;
+                    if ((*buf)[i] != 'P')
+                        return ERR_NO_MATCH;
+                    i++;
+                    regnum = 13;
+                    state = 9;
+                    continue;
+                } // else
+                return ERR_NO_MATCH;
+            case 'L':
+                if (state == 0)
+                {
+                    i++;
+                    if ((*buf)[i] != 'R')
+                        return ERR_NO_MATCH;
+                    i++;
+                    regnum = 14;
+                    state = 9;
+                    continue;
+                } // else
+                return ERR_NO_MATCH;
+            case 'P':
+                if (state == 0)
+                {
+                    i++;
+                    if ((*buf)[i] != 'C')
+                        return ERR_NO_MATCH;
+                    i++;
+                    regnum = 15;
+                    state = 9;
+                    continue;
+                } // else
+                return ERR_NO_MATCH;
+            case 'N':
+                if (state == 0)
+                {
+                    i++;
+                    if ((*buf)[i] != 'I' && (*buf)[i + 1] != 'L')
+                        return ERR_NO_MATCH;
+                    i += 2;
+                    regnum = 255;
+                    state = 9;
+                    continue;
+                } // else
+                return ERR_NO_MATCH;
+
+            default:
+                return ERR_NO_MATCH;
+        }
     }
-
-    regmatch_t match;
-    int ret = regexec(&regex, *buf, 1, &match, 0);
-
-    if (ret != 0)
-        return ERR_NO_MATCH;
-
-    if (match.rm_eo - match.rm_so == 3)
-    {
-        if ((*buf)[2] == '0')
-            *dest = 10;
-        else if ((*buf)[2] == '1')
-            *dest = 11;
-        else // NIL
-            *dest = 255;
-
-        *buf += match.rm_eo - match.rm_so;
-        return NO_ERR;
-    }
-
-    switch ((*buf)[0])
-    {
-    case 'r':
-    case 'R':
-        *dest = (*buf)[1] - '0';
-        break;
-    case 'a':
-    case 'A':
-        *dest = 12;
-        break;
-    case 's':
-    case 'S':
-        *dest = 13;
-        break;
-    case 'l':
-    case 'L':
-        *dest = 14;
-        break;
-    case 'p':
-    case 'P':
-        *dest = 15;
-        break;
-    default:
-        *dest = -1;
-        return ERR_NO_MATCH;
-    }
-
-    // Advance buffer
-    *buf += match.rm_eo - match.rm_so;
-    return NO_ERR;
 }
 
 // Match an identifier and set dest to its length
@@ -469,7 +536,7 @@ int ho_match_identifier(uint32_t *dest, char **buf)
         regex = horizon_regex.identifier_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     *dest = -1;
@@ -501,7 +568,7 @@ int ho_match_directive(uint32_t *dest, char **buf)
         regex = horizon_regex.directive_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -650,7 +717,7 @@ int ho_match_noop(uint32_t *dest, char **buf)
         regex = horizon_regex.instruction_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -678,7 +745,7 @@ int ho_match_not(uint32_t *dest, char **buf)
         regex = horizon_regex.instruction_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -717,7 +784,7 @@ int ho_match_pop(uint32_t *dest, char **buf)
         regex = horizon_regex.instruction_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -748,7 +815,7 @@ int ho_match_alu(uint32_t *dest, char **buf)
         regex = horizon_regex.instruction_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -932,7 +999,7 @@ int ho_match_push(uint32_t *dest, char **buf)
         regex = horizon_regex.instruction_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -960,7 +1027,7 @@ int ho_match_cond(uint32_t *dest, char **buf)
         regex = horizon_regex.instruction_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -1048,7 +1115,7 @@ int ho_match_store(uint32_t *dest, char **buf)
         regex = horizon_regex.instruction_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -1093,7 +1160,7 @@ int ho_match_load(uint32_t *dest, char **buf)
         regex = horizon_regex.instruction_re;
     }
 
-    regmatch_t match;
+    regmatch_t match = { 0 };
     int ret = regexec(&regex, *buf, 1, &match, 0);
 
     int len = match.rm_eo - match.rm_so;
@@ -1667,6 +1734,11 @@ int ho_parse_format_3(horizon_program_t *program, char **buf)
         char ident[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
         uint32_t len = 0;
         res = ho_match_identifier(&len, buf);
+        if (res != NO_ERR)
+        {
+            *buf = start;
+            return ERR_EXPECTED_IMM8;
+        }
         strncpy(ident, *buf, len);
         symbol_t symbol = { 0 };
         if (!(ho_get_symbol(*program, &symbol, ident) && (symbol.type == HO_SYM_VAR || symbol.type == HO_SYM_LABEL || symbol.type == HO_SYM_CONST) && symbol.value <= UINT8_MAX))
@@ -1940,7 +2012,7 @@ int ho_parse_instruction(horizon_program_t *program, char *buf)
         ho_add_code(program, instr);
         res = ho_match_newline(&buf);
         if (res != NO_ERR && res != ERR_EOF)
-            return ERR_EXPECTED_FORMAT_2_3;
+            return ERR_EXPECTED_FORMAT_1;
         return res;
     }
 
@@ -2076,6 +2148,7 @@ int ho_parse_instruction(horizon_program_t *program, char *buf)
             for (int j = 0; j <= HORIZON_IDENT_MAX_LEN && *buf != ' ' && *buf != '\t' && *buf != '\n' && *buf != '\0'; j++)
             {
                 argv[i][j] = *buf;
+                argv[i][j + 1] = 0; // null terminating byte in case the arg ends
                 buf++;
             }
             if (strlen(argv[i]) == 0)
@@ -2258,7 +2331,7 @@ void ho_parser_perror(char *msg, int error, int line)
             printf("instruction takes one register argument");
             break;
         case ERR_EXPECTED_FORMAT_4_5:
-            printf("instruction takes one register or imm16 argument");
+            printf("instruction takes one register or imm16/label argument");
             break;
         case ERR_EXPECTED_FORMAT_6:
             printf("instruction takes Rd [Rn] arguments");

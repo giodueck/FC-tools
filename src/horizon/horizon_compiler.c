@@ -52,6 +52,7 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     int code_lines_space = 100;
     program.code_lines = malloc(sizeof(char *) * code_lines_space);
     program.len_code_lines_space = code_lines_space;
+    program.code_line_indices = malloc(sizeof(int) * code_lines_space);
 
     int code_space = 100;
     program.code = malloc(sizeof(int64_t) * code_space);
@@ -68,7 +69,7 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     program.desc = NULL;
 
     uint32_t num;
-    int retval;
+    int retval = NO_ERR;
 
     ho_add_builtin_macros(&program);
 
@@ -82,6 +83,7 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
             break;
 
         int lines_consumed = 0;
+        program.curr_line = line;
         retval = ho_parse_statement(&program, &lines_consumed, &program_buf);
         if (retval != NO_ERR)
         {
@@ -104,61 +106,19 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
         line++;
     }
 
-    // printf("Symbols:\n");
-    // for (int i = 0; i < program.len_symbols; i++)
-    // {
-    //     printf("  %s = %u\n", program.symbols[i].name, program.symbols[i].value);
-    //     if (program.symbols[i].type == HO_SYM_VAR)
-    //     {
-    //         printf("    value = %u\n", program.data[program.symbols[i].value - program.data_offset]);
-    //     }
-    // }
-    // printf("\nUnparsed text: %s\n", program_buf);
-
     // printf("Instructions:\n");
     char jmp_start_instr[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
     sprintf(jmp_start_instr, "JMP #%d\n", program.code_start + 1);
     ho_parse_instruction(&program, jmp_start_instr);
     for (int i = 0; i < program.len_code_lines; i++)
     {
-        // printf("  ");
-        // for (int j = 0; program.code_lines[i][j] != '\n' && program.code_lines[i][j] != '\0'; j++)
-        // {
-        //     putchar(program.code_lines[i][j]);
-        // }
-
         int res = ho_parse_instruction(&program, program.code_lines[i]);
-        // printf("\n");
         if (!(res == NO_ERR || res == ERR_EOF))
         {
-            ho_parser_perror(NULL, res, i);
+            ho_parser_perror(NULL, res, program.code_line_indices[i]);
+            program.error_count++;
         }
-        // else
-        //     printf("    code <%08x> <%d>", (int32_t) ((int32_t)0xFFFFFFFF & program.code[i]), (int32_t) ((int32_t)0xFFFFFFFF & program.code[i]));
-
-        // printf("\n");
     }
-    // printf("Program length: %d\n", program.len_code_lines);
-    // printf("Program start instruction: %d\n", program.code_start);
-    // printf("Program name:\n");
-    // if (program.name)
-    // {
-    //     printf("  ");
-    //     for (int i = 0; program.name[i] != '\n' && program.name[i] != '\0'; i++)
-    //         putchar(program.name[i]);
-    //     printf("\n");
-    // }
-    // printf("Program description: %s\n", program.desc ? program.desc : "");
-    //
-    // printf("Macros:\n");
-    // for (int i = 0; i < program.len_macros; i++)
-    // {
-    //     printf("  %s:\n", program.macros[i].name);
-    //     for (int j = 0; j < program.macros[i].len; j++)
-    //     {
-    //         printf("    %s\n", program.macros[i].lines[j]);
-    //     }
-    // }
 
     // Debug: output program binary
     if (DEBUG)

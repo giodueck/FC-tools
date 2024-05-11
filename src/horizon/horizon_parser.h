@@ -74,6 +74,9 @@ typedef struct {
     int len_input;
 
     // Instructions
+    int curr_line;          // to store which line in the text corresponds to which 
+                            // instruction
+    int *code_line_indices; // malloced, same size as code_lines
     int code_offset;        // for labels
     int code_start;         // for the initial jmp start instruction
     int len_code_lines;
@@ -82,6 +85,7 @@ typedef struct {
                             //  these lines must be parsed in the second pass to allow using labels defined
                             //  later
 
+    // Machine code
     uint32_t args[3];       // arguments parsed are placed here temporarily
     int imm_arg;            // zero if no immediate arguments, 1 if there is
     int len_code;
@@ -104,7 +108,6 @@ typedef struct {
 
 struct horizon_regex_t {
     regex_t literal_re;
-    regex_t register_re;
     regex_t identifier_re;
     regex_t instruction_re;
     regex_t directive_re;

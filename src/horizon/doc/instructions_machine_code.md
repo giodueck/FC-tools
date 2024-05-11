@@ -159,21 +159,25 @@ Instruction formats: 4, 5
     description: no operation. This instruction is implemented in circuitry as a conditional which asserts false, so it never jumps.
 
 ## Memory access: 0x3
-Instruction format: 4
-
 Address used is always the one stored in the `AR` register.
 The argument is either the source (for store\[id\]) or the destination (for load\[id\])
 of the value.
 
 - 30: store
+    format: 4, 5
 - 31: load
+    format: 4
 - 32: storei
+    format: 4, 5
     description: store and increment AR
 - 33: loadi
+    format: 4
     description: load and increment AR
 - 34: stored
+    format: 4, 5
     description: store and decrement AR
 - 35: loadd
+    format: 4
     description: load and decrement AR
 
 ## Stack: 0x3
