@@ -160,10 +160,10 @@ int base64_decode(char *decoded, const char *b64_data)
 
     for (int i = 0; b64_data[i] != '\0'; i++)
     {
-        if (ascii_to_base64[b64_data[i]] == 64 && b64_data[i] != '=')
+        if (ascii_to_base64[(int) b64_data[i]] == 64 && b64_data[i] != '=')
             return -1;
 
-        quad[qi++] = ascii_to_base64[b64_data[i]];
+        quad[qi++] = ascii_to_base64[(int) b64_data[i]];
         pad += (b64_data[i] == '=');
 
         if (qi == 4)
@@ -186,7 +186,6 @@ int base64_decode(char *decoded, const char *b64_data)
 // bytes_len: length of bytes_data.
 int base64_encode(char *encoded, const char *bytes_data, size_t bytes_len)
 {
-    size_t len = base64_encode_len(bytes_len);
     int j = 0;
     int ti = 0;
     unsigned char triplet[3] = { 0 };

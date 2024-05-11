@@ -9,6 +9,8 @@
 #include "horizon_parser.h"
 #include "../fcerrors.h"
 
+struct horizon_regex_t horizon_regex = { 0 };
+
 const char *horizon_reserved[] = {
     "ADD",
     "SUB",
@@ -431,7 +433,7 @@ int ho_match_register(uint32_t *dest, char **buf)
                     *dest = regnum;
                     return NO_ERR;
                 default:
-                    ERR_NO_MATCH;
+                    return ERR_NO_MATCH;
             }
         }
 

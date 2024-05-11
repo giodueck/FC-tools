@@ -308,7 +308,6 @@ int hovm_run(horizon_vm_t *vm)
 {
     // Instruction register
     uint32_t ir = 0;
-    uint8_t op = 0;
 
     while (1)
     {

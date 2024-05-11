@@ -162,7 +162,7 @@ int main(int argc, char **argv)
     // Output
     if (output_binary)
     {
-        char binout[BUFSIZ] = { 0 };
+        char binout[BUFSIZ + 4] = { 0 };
         sprintf(binout, "%s.bin", output_filename);
         if (arch == ARCH_HORIZON)
         {

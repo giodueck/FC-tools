@@ -113,7 +113,7 @@ struct horizon_regex_t {
     regex_t directive_re;
 };
 
-static struct horizon_regex_t horizon_regex = { 0 };
+extern struct horizon_regex_t horizon_regex;
 
 extern const char *horizon_reserved[];
 extern const char *horizon_reserved_ident[];
