@@ -1,22 +1,34 @@
+#include "horizon/horizon_parser.h"
+#include "horizon/horizon_vm.h"
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "bp_creator.h"
-#include "rom_bp_strings.h"
 
 int main()
 {
-    for (int i = 0; i < 10; i++)
-    {
-        char buf[100] = { 0 };
-        rom_11_placeholder(buf, i);
-        printf("%s => %d\n", buf, (int)is_rom_11_placeholder(atoi(buf)));
-    }
-    printf("%d => %d\n", 12345, (int)is_rom_11_placeholder(12345));
+    uint32_t program[] = {
+        0xAA000001,
+        0x0B000000,
+        0x8001FF03,
+        0x800CFF40,
+        0x32000100,
+        0x91010101,
+        0xA1000004,
+        0xB0000000,
+        0x0B0C0C0C,
+        0x800CFF40,
+        0x33010000,
+        0x91FF0100,
+        0xA000000F,
+        0x00000001,
+        0xAA00000A,
+        0x2A000F00,
+    };
 
-    int32_t data[10] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
-    char *bp_str_out = bp_replace(rom_11_bit, is_rom_11_placeholder, data, 10);
-    printf("%s\n", bp_str_out);
+    horizon_vm_t vm = { 0 };
 
-    free(bp_str_out);
+    hovm_load_rom(&vm, program, sizeof(program) / sizeof(int32_t));
+    hovm_run(&vm);
+
     return 0;
 }

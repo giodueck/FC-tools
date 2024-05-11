@@ -9,10 +9,10 @@
 #define HOVM_ROM_SIZE       2048
 
 typedef struct {
-    int rev;
-    int32_t registers[256];
-    int8_t z, n, v;
-    int32_t ram[4096];
+    uint32_t rev;
+    uint32_t registers[256];
+    uint8_t z, n, v;
+    uint32_t ram[4096];
 } horizon_vm_t;
 
 enum horizon_vm_register {
@@ -46,7 +46,7 @@ enum horizon_vm_register {
 
 // Load program into the first addresses in the VM's RAM
 // Returns number of words written
-int hovm_load_rom(horizon_vm_t *vm, int32_t *program, size_t size);
+int hovm_load_rom(horizon_vm_t *vm, uint32_t *program, size_t size);
 
 // Set PC to the first instruction, i.e. 0
 int hovm_reset(horizon_vm_t *vm);

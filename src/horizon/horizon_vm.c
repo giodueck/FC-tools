@@ -2,7 +2,7 @@
 #include "horizon_parser.h"
 #include <math.h>
 
-void hovm_write_reg(horizon_vm_t *vm, uint8_t reg, int32_t value)
+void hovm_write_reg(horizon_vm_t *vm, uint8_t reg, uint32_t value)
 {
     switch (reg)
     {
@@ -28,7 +28,7 @@ int32_t hovm_read_reg(horizon_vm_t *vm, uint8_t reg)
 
 // Execute any of the ALU operations, with or without flags, with or without
 // immediate arguments
-void hovm_execute_alu(horizon_vm_t *vm, int32_t ir)
+void hovm_execute_alu(horizon_vm_t *vm, uint32_t ir)
 {
     int set_flags = ir & 0x10000000;
     int imm_arg = ir & 0x80000000;
@@ -171,10 +171,10 @@ void hovm_execute_alu(horizon_vm_t *vm, int32_t ir)
 
 // Execute any jump instruction, with or without immediate address
 // Set PC to the jump argument if the condition is true, or increment if false
-void hovm_execute_cond(horizon_vm_t *vm, int32_t ir)
+void hovm_execute_cond(horizon_vm_t *vm, uint32_t ir)
 {
     int imm_arg = ir & 0x80000000;
-    int rn = ir & 0xFF;
+    int rn = (ir >> 8) & 0xFF;
     uint16_t imm16 = ir & 0xFFFF;
 
     uint16_t A = (imm_arg) ? imm16 : hovm_read_reg(vm, rn);
@@ -219,9 +219,45 @@ void hovm_execute_cond(horizon_vm_t *vm, int32_t ir)
     }
 }
 
+void hovm_execute_mem(horizon_vm_t *vm, uint32_t ir)
+{
+    int imm_arg = ir & 0x80000000;
+    int rn = (ir >> 8) & 0xFF;
+    int rd = (ir >> 16) & 0xFF;
+    uint16_t imm16 = ir & 0xFFFF;
+
+    uint16_t A = (imm_arg) ? imm16 : hovm_read_reg(vm, rn);
+
+    uint32_t op = (ir >> 24);
+    uint32_t ar = hovm_read_reg(vm, HO_AR);
+
+    switch (op & 0x7F)
+    {
+        case HO_STORE:
+        case HO_STOREI:
+        case HO_STORED:
+            if (ar >= 0 && ar < HOVM_RAM_SIZE)
+                vm->ram[ar] = A;
+            break;
+        case HO_LOAD:
+        case HO_LOADI:
+        case HO_LOADD:
+            if (ar >= 0 && ar < HOVM_RAM_SIZE)
+                hovm_write_reg(vm, rd, vm->ram[ar]);
+            break;
+    }
+
+    // STOREI and LOADI
+    if (op & 2)
+        vm->registers[HO_AR]++;
+    // STORED and LOADD
+    else if (op & 4)
+        vm->registers[HO_AR]--;
+}
+
 // Load program into the first addresses in the VM's RAM
 // Returns number of words written
-int hovm_load_rom(horizon_vm_t *vm, int32_t *program, size_t size)
+int hovm_load_rom(horizon_vm_t *vm, uint32_t *program, size_t size)
 {
     int i;
     for (i = 0; i < size && i < HOVM_ROM_SIZE; i++)
@@ -243,7 +279,7 @@ int hovm_reset(horizon_vm_t *vm)
 int hovm_run(horizon_vm_t *vm)
 {
     // Instruction register
-    int32_t ir = 0;
+    uint32_t ir = 0;
     uint8_t op = 0;
 
     while (1)
@@ -290,6 +326,15 @@ int hovm_run(horizon_vm_t *vm)
             case HO_JVC:
             case HO_JMP:
                 hovm_execute_cond(vm, ir);
+                break;
+            case HO_STORE:
+            case HO_LOAD:
+            case HO_STOREI:
+            case HO_LOADI:
+            case HO_STORED:
+            case HO_LOADD:
+                hovm_execute_mem(vm, ir);
+                vm->registers[HO_PC]++;
                 break;
         }
     }
