@@ -15,6 +15,7 @@ typedef struct {
     uint8_t z, n, v;
     uint32_t ram[HOVM_RAM_SIZE];
     uint32_t stack[HOVM_STACK_SIZE];
+    uint32_t cycles;
 } horizon_vm_t;
 
 enum horizon_vm_register {

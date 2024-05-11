@@ -189,6 +189,7 @@ int main(int argc, char **argv)
         hovm_load_rom(&vm, program, program_size);
         hovm_run(&vm);
 
+        printf("Time: %u cycles\n", vm.cycles);
         printf("Registers:\n");
         printf("    R0  = %08x = %d\n", vm.registers[HO_R0], vm.registers[HO_R0]);
         printf("    R1  = %08x = %d\n", vm.registers[HO_R1], vm.registers[HO_R1]);

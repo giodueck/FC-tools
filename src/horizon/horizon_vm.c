@@ -369,5 +369,6 @@ int hovm_run(horizon_vm_t *vm)
                 vm->registers[HO_PC]++;
                 break;
         }
+        vm->cycles++;
     }
 }
