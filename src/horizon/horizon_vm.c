@@ -255,6 +255,34 @@ void hovm_execute_mem(horizon_vm_t *vm, uint32_t ir)
         vm->registers[HO_AR]--;
 }
 
+void hovm_execute_stack(horizon_vm_t *vm, uint32_t ir)
+{
+    int imm_arg = ir & 0x80000000;
+    int rn = (ir >> 8) & 0xFF;
+    int rd = (ir >> 16) & 0xFF;
+    uint16_t imm16 = ir & 0xFFFF;
+
+    uint16_t A = (imm_arg) ? imm16 : hovm_read_reg(vm, rn);
+
+    uint32_t op = (ir >> 24);
+    uint32_t sp = hovm_read_reg(vm, HO_SP);
+
+    switch (op & 0x7F)
+    {
+        case HO_PUSH:
+            if (sp >= 0 && sp < HOVM_STACK_SIZE)
+                vm->stack[sp] = A;
+            sp++;
+            break;
+        case HO_POP:
+            sp--;
+            if (sp >= 0 && sp < HOVM_STACK_SIZE)
+                hovm_write_reg(vm, rd, vm->stack[sp]);
+            break;
+    }
+    hovm_write_reg(vm, HO_SP, sp);
+}
+
 // Load program into the first addresses in the VM's RAM
 // Returns number of words written
 int hovm_load_rom(horizon_vm_t *vm, uint32_t *program, size_t size)
@@ -334,6 +362,11 @@ int hovm_run(horizon_vm_t *vm)
             case HO_STORED:
             case HO_LOADD:
                 hovm_execute_mem(vm, ir);
+                vm->registers[HO_PC]++;
+                break;
+            case HO_PUSH:
+            case HO_POP:
+                hovm_execute_stack(vm, ir);
                 vm->registers[HO_PC]++;
                 break;
         }

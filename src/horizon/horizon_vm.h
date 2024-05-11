@@ -7,12 +7,14 @@
 #define HOVM_REGISTER_COUNT  255
 #define HOVM_RAM_SIZE       4096
 #define HOVM_ROM_SIZE       2048
+#define HOVM_STACK_SIZE      512
 
 typedef struct {
     uint32_t rev;
-    uint32_t registers[256];
+    uint32_t registers[HOVM_REGISTER_COUNT];
     uint8_t z, n, v;
-    uint32_t ram[4096];
+    uint32_t ram[HOVM_RAM_SIZE];
+    uint32_t stack[HOVM_STACK_SIZE];
 } horizon_vm_t;
 
 enum horizon_vm_register {

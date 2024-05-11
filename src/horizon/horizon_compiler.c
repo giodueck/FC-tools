@@ -77,7 +77,7 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
     while (retval != ERR_EOF)
     {
         // This will consume whitespace even without newlines
-        while (!ho_match_newline(&program_buf))
+        while (!(retval = ho_match_newline(&program_buf)))
             line++;
         if (retval == ERR_EOF)
             break;
