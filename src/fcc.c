@@ -26,7 +26,7 @@ const char *opt_help[] = {
     "Filename of the program. May be passed without the flag as well",
     "Architecture: currently only horizon is implemented (default: horizon)",
     "Generate only raw binary output (.bin output)",
-    "Output file name (default: a.out)",
+    "Output file name. By default blueprint strings are output to stdout, if\n\t\t\tgenerating binary output, the default is 'a.out.bin'",
     "Print this help menu and exit",
 };
 
@@ -78,6 +78,7 @@ int main(int argc, char **argv)
 {
     char filename[BUFSIZ] = { 0 };
     char output_filename[BUFSIZ] = "a.out";
+    int output_filename_set = 0;
     int arch = ARCH_HORIZON;
     int output_binary = 0;
 
@@ -103,6 +104,7 @@ int main(int argc, char **argv)
             break;
         case 'o':
             strncpy(output_filename, optarg, BUFSIZ - 1);
+            output_filename_set = 1;
             break;
         case 'h':
             help();
@@ -182,7 +184,10 @@ int main(int argc, char **argv)
         // Output compiled BP string
         if (arch == ARCH_HORIZON)
         {
-            if (((fd = fopen(output_filename, "w")) != NULL))
+            if (output_filename_set)
+                (fd = fopen(output_filename, "w"));
+            else fd = stdout;
+            if (fd != NULL)
             {
                 int32_t *code_array = malloc(sizeof(int32_t) * ho_program->len_code);
                 for (int i = 0; i < ho_program->len_code; i++)
@@ -193,7 +198,8 @@ int main(int argc, char **argv)
                 fwrite(bp_str, 1, strlen(bp_str), fd);
                 free(code_array);
                 free(bp_str);
-                fclose(fd);
+                if (output_filename_set) fclose(fd);
+                else putchar('\n');
             } else
             {
                 perror("fcc");

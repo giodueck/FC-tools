@@ -55,6 +55,7 @@ int hovm_load_rom(horizon_vm_t *vm, uint32_t *program, size_t size);
 int hovm_reset(horizon_vm_t *vm);
 
 // Start execution from the start of the program
+// Stop only on HALT/JMP PC
 int hovm_run(horizon_vm_t *vm);
 
 #endif // HOPRIZON_VM_H

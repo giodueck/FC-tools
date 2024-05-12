@@ -74,7 +74,10 @@ void hovm_execute_alu(horizon_vm_t *vm, uint32_t ir)
         case HO_DIV: case HO_DIVS:
             A = hovm_read_reg(vm, rm);
             B = (imm_arg) ? imm8 : hovm_read_reg(vm, rn);
-            res = A / B;
+            if (B == 0)
+                res = 0;
+            else
+                res = A / B;
 
             hovm_write_reg(vm, rd, res);
             break;
@@ -304,6 +307,7 @@ int hovm_reset(horizon_vm_t *vm)
 }
 
 // Start execution from the start of the program
+// Stop only on HALT/JMP PC
 int hovm_run(horizon_vm_t *vm)
 {
     // Instruction register
