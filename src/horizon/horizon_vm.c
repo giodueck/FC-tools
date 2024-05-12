@@ -306,6 +306,73 @@ int hovm_reset(horizon_vm_t *vm)
     return 0;
 }
 
+// Execute one instruction
+void hovm_step(horizon_vm_t *vm)
+{
+    // Instruction register
+    uint32_t ir = 0;
+
+    // Get next instruction using PC
+    ir = vm->ram[vm->registers[HO_PC]];
+
+    // HALT = JMP PC
+    if (ir == 0x2A000F00)
+        return;
+
+    // Decode and execute
+    switch ((ir >> 24) & 0x7F)  // ignore imm flag for this step of decoding
+    {
+        case HO_NOOP:
+            vm->registers[HO_PC]++;
+            break;
+        case HO_ADD: case HO_ADDS:
+        case HO_SUB: case HO_SUBS:
+        case HO_MUL: case HO_MULS:
+        case HO_DIV: case HO_DIVS:
+        case HO_MOD: case HO_MODS:
+        case HO_EXP: case HO_EXPS:
+        case HO_LSH: case HO_LSHS:
+        case HO_RSH: case HO_RSHS:
+        case HO_AND: case HO_ANDS:
+        case HO_OR: case HO_ORS:
+        case HO_NOT: case HO_NOTS:
+        case HO_XOR: case HO_XORS:
+        case HO_BCAT: case HO_BCATS:
+        case HO_HCAT: case HO_HCATS:
+            hovm_execute_alu(vm, ir);
+            vm->registers[HO_PC]++;
+            break;
+        case HO_JEQ:
+        case HO_JNE:
+        case HO_JLT:
+        case HO_JGT:
+        case HO_JLE:
+        case HO_JGE:
+        case HO_JNG:
+        case HO_JPZ:
+        case HO_JVS:
+        case HO_JVC:
+        case HO_JMP:
+            hovm_execute_cond(vm, ir);
+            break;
+        case HO_STORE:
+        case HO_LOAD:
+        case HO_STOREI:
+        case HO_LOADI:
+        case HO_STORED:
+        case HO_LOADD:
+            hovm_execute_mem(vm, ir);
+            vm->registers[HO_PC]++;
+            break;
+        case HO_PUSH:
+        case HO_POP:
+            hovm_execute_stack(vm, ir);
+            vm->registers[HO_PC]++;
+            break;
+    }
+    vm->cycles++;
+}
+
 // Start execution from the start of the program
 // Stop only on HALT/JMP PC
 void hovm_run(horizon_vm_t *vm)
@@ -322,58 +389,8 @@ void hovm_run(horizon_vm_t *vm)
         if (ir == 0x2A000F00)
             return;
 
-        // Decode and execute
-        switch ((ir >> 24) & 0x7F)  // ignore imm flag for this step of decoding
-        {
-            case HO_NOOP:
-                vm->registers[HO_PC]++;
-                break;
-            case HO_ADD: case HO_ADDS:
-            case HO_SUB: case HO_SUBS:
-            case HO_MUL: case HO_MULS:
-            case HO_DIV: case HO_DIVS:
-            case HO_MOD: case HO_MODS:
-            case HO_EXP: case HO_EXPS:
-            case HO_LSH: case HO_LSHS:
-            case HO_RSH: case HO_RSHS:
-            case HO_AND: case HO_ANDS:
-            case HO_OR: case HO_ORS:
-            case HO_NOT: case HO_NOTS:
-            case HO_XOR: case HO_XORS:
-            case HO_BCAT: case HO_BCATS:
-            case HO_HCAT: case HO_HCATS:
-                hovm_execute_alu(vm, ir);
-                vm->registers[HO_PC]++;
-                break;
-            case HO_JEQ:
-            case HO_JNE:
-            case HO_JLT:
-            case HO_JGT:
-            case HO_JLE:
-            case HO_JGE:
-            case HO_JNG:
-            case HO_JPZ:
-            case HO_JVS:
-            case HO_JVC:
-            case HO_JMP:
-                hovm_execute_cond(vm, ir);
-                break;
-            case HO_STORE:
-            case HO_LOAD:
-            case HO_STOREI:
-            case HO_LOADI:
-            case HO_STORED:
-            case HO_LOADD:
-                hovm_execute_mem(vm, ir);
-                vm->registers[HO_PC]++;
-                break;
-            case HO_PUSH:
-            case HO_POP:
-                hovm_execute_stack(vm, ir);
-                vm->registers[HO_PC]++;
-                break;
-        }
-        vm->cycles++;
+        // Execute instruction
+        hovm_step(vm);
     }
 }
 
@@ -397,58 +414,8 @@ void hovm_continue(horizon_vm_t *vm)
         if (ir == 0x2A000F00)
             return;
 
-        // Decode and execute
-        switch ((ir >> 24) & 0x7F)  // ignore imm flag for this step of decoding
-        {
-            case HO_NOOP:
-                vm->registers[HO_PC]++;
-                break;
-            case HO_ADD: case HO_ADDS:
-            case HO_SUB: case HO_SUBS:
-            case HO_MUL: case HO_MULS:
-            case HO_DIV: case HO_DIVS:
-            case HO_MOD: case HO_MODS:
-            case HO_EXP: case HO_EXPS:
-            case HO_LSH: case HO_LSHS:
-            case HO_RSH: case HO_RSHS:
-            case HO_AND: case HO_ANDS:
-            case HO_OR: case HO_ORS:
-            case HO_NOT: case HO_NOTS:
-            case HO_XOR: case HO_XORS:
-            case HO_BCAT: case HO_BCATS:
-            case HO_HCAT: case HO_HCATS:
-                hovm_execute_alu(vm, ir);
-                vm->registers[HO_PC]++;
-                break;
-            case HO_JEQ:
-            case HO_JNE:
-            case HO_JLT:
-            case HO_JGT:
-            case HO_JLE:
-            case HO_JGE:
-            case HO_JNG:
-            case HO_JPZ:
-            case HO_JVS:
-            case HO_JVC:
-            case HO_JMP:
-                hovm_execute_cond(vm, ir);
-                break;
-            case HO_STORE:
-            case HO_LOAD:
-            case HO_STOREI:
-            case HO_LOADI:
-            case HO_STORED:
-            case HO_LOADD:
-                hovm_execute_mem(vm, ir);
-                vm->registers[HO_PC]++;
-                break;
-            case HO_PUSH:
-            case HO_POP:
-                hovm_execute_stack(vm, ir);
-                vm->registers[HO_PC]++;
-                break;
-        }
-        vm->cycles++;
+        // Execute instruction
+        hovm_step(vm);
     }
 }
 

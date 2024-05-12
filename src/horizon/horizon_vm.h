@@ -66,6 +66,9 @@ void hovm_run(horizon_vm_t *vm);
 // Stop on HALT/JMP PC or on a breakpoint
 void hovm_continue(horizon_vm_t *vm);
 
+// Execute one instruction
+void hovm_step(horizon_vm_t *vm);
+
 // Disassemble the word at the given address into its assembly equivalent
 // If the address points to the data section between the first JMP and its
 // destination, the resulting string is just the decimal representation of
