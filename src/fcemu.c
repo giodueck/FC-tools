@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include "fcerrors.h"
+#include "fcgui.h"
 #include "horizon/horizon_compiler.h"
 #include "horizon/horizon_parser.h"
 #include "horizon/horizon_vm.h"
@@ -20,12 +21,13 @@ int opt;
 extern char *optarg;
 extern int optopt;
 
-const char *optstring = ":f:a:bh";
-const char *req_opt = "ynnn";
+const char *optstring = ":f:a:bth";
+const char *req_opt = "ynnnn";
 const char *opt_help[] = {
     "Filename of the program. May be passed without the flag as well",
     "Architecture: currently only horizon is implemented (default: horizon)",
     "Interpret input file as compiled bytecode",
+    "Run in TUI instead of GUI",
     "Print this help menu and exit",
 };
 
@@ -78,6 +80,7 @@ int main(int argc, char **argv)
     char filename[BUFSIZ] = { 0 };
     int arch = ARCH_HORIZON;
     int input_binary = 0;
+    int tui = 0;
 
     while ((opt = getopt(argc, argv, optstring)) != -1)
     {
@@ -98,6 +101,9 @@ int main(int argc, char **argv)
             break;
         case 'b':
             input_binary = 1;
+            break;
+        case 't':
+            tui = 1;
             break;
         case 'h':
             help();
@@ -184,29 +190,37 @@ int main(int argc, char **argv)
     // Run program
     if (program)
     {
-        horizon_vm_t vm = { 0 };
+        if (tui)
+        {
+            horizon_vm_t vm = { 0 };
 
-        hovm_load_rom(&vm, program, program_size);
-        hovm_run(&vm);
+            hovm_load_rom(&vm, program, program_size);
+            hovm_run(&vm);
 
-        printf("Time: %u cycles\n", vm.cycles);
-        printf("Registers:\n");
-        printf("    R0  = %08x = %d\n", vm.registers[HO_R0], vm.registers[HO_R0]);
-        printf("    R1  = %08x = %d\n", vm.registers[HO_R1], vm.registers[HO_R1]);
-        printf("    R2  = %08x = %d\n", vm.registers[HO_R2], vm.registers[HO_R2]);
-        printf("    R3  = %08x = %d\n", vm.registers[HO_R3], vm.registers[HO_R3]);
-        printf("    R4  = %08x = %d\n", vm.registers[HO_R4], vm.registers[HO_R4]);
-        printf("    R5  = %08x = %d\n", vm.registers[HO_R5], vm.registers[HO_R5]);
-        printf("    R6  = %08x = %d\n", vm.registers[HO_R6], vm.registers[HO_R6]);
-        printf("    R7  = %08x = %d\n", vm.registers[HO_R7], vm.registers[HO_R7]);
-        printf("    R8  = %08x = %d\n", vm.registers[HO_R8], vm.registers[HO_R8]);
-        printf("    R9  = %08x = %d\n", vm.registers[HO_R9], vm.registers[HO_R9]);
-        printf("    R10 = %08x = %d\n", vm.registers[HO_R10], vm.registers[HO_R10]);
-        printf("    R11 = %08x = %d\n", vm.registers[HO_R11], vm.registers[HO_R11]);
-        printf("    AR  = %08x = %d\n", vm.registers[HO_AR], vm.registers[HO_AR]);
-        printf("    SP  = %08x = %d\n", vm.registers[HO_SP], vm.registers[HO_SP]);
-        printf("    LR  = %08x = %d\n", vm.registers[HO_LR], vm.registers[HO_LR]);
-        printf("    PC  = %08x = %d\n", vm.registers[HO_PC], vm.registers[HO_PC]);
+            printf("Time: %u cycles\n", vm.cycles);
+            printf("Registers:\n");
+            printf("    R0  = %08x = %d\n", vm.registers[HO_R0], vm.registers[HO_R0]);
+            printf("    R1  = %08x = %d\n", vm.registers[HO_R1], vm.registers[HO_R1]);
+            printf("    R2  = %08x = %d\n", vm.registers[HO_R2], vm.registers[HO_R2]);
+            printf("    R3  = %08x = %d\n", vm.registers[HO_R3], vm.registers[HO_R3]);
+            printf("    R4  = %08x = %d\n", vm.registers[HO_R4], vm.registers[HO_R4]);
+            printf("    R5  = %08x = %d\n", vm.registers[HO_R5], vm.registers[HO_R5]);
+            printf("    R6  = %08x = %d\n", vm.registers[HO_R6], vm.registers[HO_R6]);
+            printf("    R7  = %08x = %d\n", vm.registers[HO_R7], vm.registers[HO_R7]);
+            printf("    R8  = %08x = %d\n", vm.registers[HO_R8], vm.registers[HO_R8]);
+            printf("    R9  = %08x = %d\n", vm.registers[HO_R9], vm.registers[HO_R9]);
+            printf("    R10 = %08x = %d\n", vm.registers[HO_R10], vm.registers[HO_R10]);
+            printf("    R11 = %08x = %d\n", vm.registers[HO_R11], vm.registers[HO_R11]);
+            printf("    AR  = %08x = %d\n", vm.registers[HO_AR], vm.registers[HO_AR]);
+            printf("    SP  = %08x = %d\n", vm.registers[HO_SP], vm.registers[HO_SP]);
+            printf("    LR  = %08x = %d\n", vm.registers[HO_LR], vm.registers[HO_LR]);
+            printf("    PC  = %08x = %d\n", vm.registers[HO_PC], vm.registers[HO_PC]);
+        }
+        else
+        {
+            // Run emulator in graphical mode
+            fcgui_start(arch, program, program_size);
+        }
     }
 
 

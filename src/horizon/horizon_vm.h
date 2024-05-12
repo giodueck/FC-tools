@@ -16,6 +16,10 @@ typedef struct {
     uint32_t ram[HOVM_RAM_SIZE];
     uint32_t stack[HOVM_STACK_SIZE];
     uint32_t cycles;
+
+    // 1 if the corresponding code should break execution
+    // 0 if not
+    uint8_t breakpoint_map[HOVM_ROM_SIZE];
 } horizon_vm_t;
 
 enum horizon_vm_register {
@@ -56,6 +60,17 @@ int hovm_reset(horizon_vm_t *vm);
 
 // Start execution from the start of the program
 // Stop only on HALT/JMP PC
-int hovm_run(horizon_vm_t *vm);
+void hovm_run(horizon_vm_t *vm);
+
+// Start or resume execution of the program
+// Stop on HALT/JMP PC or on a breakpoint
+void hovm_continue(horizon_vm_t *vm);
+
+// Disassemble the word at the given address into its assembly equivalent
+// If the address points to the data section between the first JMP and its
+// destination, the resulting string is just the decimal representation of
+// the value of the word.
+// dest is assumed to be big enough
+void hovm_disassemble(char *dest, horizon_vm_t *vm, uint32_t address);
 
 #endif // HOPRIZON_VM_H
