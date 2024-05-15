@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_keyboard.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_ttf.h>
@@ -431,23 +432,21 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
                     case SDLK_n:
                     case SDLK_SPACE:
                         fcgui_mode = FCGUI_STEP;
+                        fcgui_ff = 0;
                         break;
                     case SDLK_c:
                         fcgui_mode = FCGUI_CONTINUE;
+                        if (SDL_GetModState() & KMOD_SHIFT)
+                            fcgui_ff = 1;
+                        else
+                            fcgui_ff = 0;
                         break;
                     case SDLK_r:
                         fcgui_mode = FCGUI_RUN;
-                        break;
-                    default:
-                        break;
-                }
-            }
-            else if (e.type == SDL_MOUSEBUTTONDOWN)
-            {
-                switch (e.button.button)
-                {
-                    case SDL_BUTTON_LEFT:
-                        printf("x = %d, y = %d\n", e.button.x, e.button.y);
+                        if (SDL_GetModState() & KMOD_SHIFT)
+                            fcgui_ff = 1;
+                        else
+                            fcgui_ff = 0;
                         break;
                     default:
                         break;
@@ -475,10 +474,17 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
             default:
                 continue;
         }
+
         if (vm.ram[vm.registers[HO_PC]] == HOVM_HALT || vm.breakpoint_map[vm.registers[HO_PC]])
+        {
             fcgui_mode = FCGUI_BREAK;
+            fcgui_ff = 0;
+        }
 
         /* Drawing */
+        // Fast forward mode skips redrawing
+        if (fcgui_ff)
+            continue;
         // Clear
         SDL_SetRenderDrawColor(fcgui_renderer, fcgui_bgcolor.r, fcgui_bgcolor.g, fcgui_bgcolor.b, fcgui_bgcolor.a);
         SDL_RenderClear(fcgui_renderer);
