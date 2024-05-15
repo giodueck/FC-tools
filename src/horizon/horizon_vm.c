@@ -304,6 +304,7 @@ int hovm_load_rom(horizon_vm_t *vm, uint32_t *program, size_t size)
 int hovm_reset(horizon_vm_t *vm)
 {
     vm->registers[HO_PC] = 0;
+    vm->cycles = 0;
     return 0;
 }
 

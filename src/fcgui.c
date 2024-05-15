@@ -331,9 +331,14 @@ void fcgui_draw_program(horizon_vm_t *vm, int xoffset, int yoffset)
     font_options.fg = FCGUI_ORANGE;
     font_options.style = TTF_STYLE_BOLD;
     fcgui_draw_text(buf, xoffset, yoffset, font_options);
-    yoffset += fcgui_ptsize * 1.5;
-    font_options.fg = FCGUI_LIGHT_GREY;
     font_options.style = 0;
+
+    // Cycle counter
+    sprintf(buf, "Cycles: %u", vm->cycles);
+    font_options.fg = FCGUI_GREY;
+    fcgui_draw_text(buf, xoffset + 8 * fcgui_ptsize, yoffset, font_options);
+    font_options.fg = FCGUI_LIGHT_GREY;
+    yoffset += fcgui_ptsize * 1.5;
 
     // preceding instructions
     char addrbuf[BUFSIZ] = { 0 };
@@ -375,6 +380,35 @@ void fcgui_draw_program(horizon_vm_t *vm, int xoffset, int yoffset)
         fcgui_draw_text(buf, xoffset + 4 * fcgui_ptsize, yoffset, font_options);
         yoffset += fcgui_ptsize * 1.5;
     }
+}
+
+// Draw control hints
+void fcgui_draw_controls(int xoffset, int yoffset)
+{
+    char buf[BUFSIZ] = { 0 };
+    fcgui_font_options_t font_options = { .fg = FCGUI_LIGHT_GREY };
+
+    // Header
+    sprintf(buf, "Controls");
+    font_options.fg = FCGUI_ORANGE;
+    font_options.style = TTF_STYLE_BOLD;
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    yoffset += fcgui_ptsize * 1.5;
+    font_options.fg = FCGUI_GREY;
+    font_options.style = 0;
+
+    // Step
+    sprintf(buf, "Step        <S>/<Space>");
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    // Continue
+    sprintf(buf, "Continue    <C>");
+    fcgui_draw_text(buf, xoffset + 20 * fcgui_ptsize, yoffset, font_options);
+    // Reset
+    sprintf(buf, "Reset       <C-R>");
+    fcgui_draw_text(buf, xoffset, yoffset + 1.5 * fcgui_ptsize, font_options);
+    // Run
+    sprintf(buf, "Run to halt <R>");
+    fcgui_draw_text(buf, xoffset + 20 * fcgui_ptsize, yoffset + 1.5 * fcgui_ptsize, font_options);
 }
 
 void fcgui_start(int arch, uint32_t *program, size_t program_size)
@@ -430,7 +464,6 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
                         quit = 1;
                         break;
                     case SDLK_s:
-                    case SDLK_n:
                     case SDLK_SPACE:
                         fcgui_mode = FCGUI_STEP;
                         fcgui_ff = 0;
@@ -507,6 +540,10 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
         // Program
         yoffset = 250;
         fcgui_draw_program(&vm, xoffset, yoffset);
+
+        // Constrols
+        xoffset = 20, yoffset = 700;
+        fcgui_draw_controls(xoffset, yoffset);
 
         // Registers + flags
         xoffset = fcgui_width - 300, yoffset = 10;
