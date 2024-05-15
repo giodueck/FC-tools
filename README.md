@@ -10,8 +10,9 @@ Currently there exists:
     - [x] Executing compiled programs
 - Graphical emulator
     - [x] Graphical program to run programs interactively
-    - [x] Step by step debugging
     - [x] Inspect register and RAM state
+    - [x] Step by step debugging
+    - [ ] **WIP** Set breakpoints
 
 # Building
 Dependencies:
