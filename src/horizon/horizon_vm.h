@@ -10,6 +10,8 @@
 #define HOVM_ROM_SIZE       2048
 #define HOVM_STACK_SIZE      512
 
+#define HOVM_HALT 0x2A000F00
+
 typedef struct {
     uint32_t rev;
     uint32_t registers[HOVM_REGISTER_COUNT];
@@ -21,6 +23,8 @@ typedef struct {
     // 1 if the corresponding code should break execution
     // 0 if not
     uint8_t breakpoint_map[HOVM_ROM_SIZE];
+    // Set on ROM load, for dissassembly
+    uint32_t program_size;
 } horizon_vm_t;
 
 enum horizon_vm_register {
@@ -75,6 +79,6 @@ void hovm_step(horizon_vm_t *vm);
 // destination, the resulting string is just the decimal representation of
 // the value of the word.
 // dest is assumed to be big enough
-void hovm_disassemble(char *dest, horizon_vm_t *vm, uint32_t address);
+void hovm_disassemble(char *dest, horizon_vm_t *vm, int32_t address);
 
 #endif // HOPRIZON_VM_H

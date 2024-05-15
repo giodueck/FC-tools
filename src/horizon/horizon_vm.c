@@ -291,6 +291,7 @@ void hovm_execute_stack(horizon_vm_t *vm, uint32_t ir)
 int hovm_load_rom(horizon_vm_t *vm, uint32_t *program, size_t size)
 {
     int i;
+    vm->program_size = size;
     for (i = 0; i < size && i < HOVM_ROM_SIZE; i++)
     {
         vm->ram[i] = program[i];
@@ -316,7 +317,7 @@ void hovm_step(horizon_vm_t *vm)
     ir = vm->ram[vm->registers[HO_PC]];
 
     // HALT = JMP PC
-    if (ir == 0x2A000F00)
+    if (ir == HOVM_HALT)
         return;
 
     // Decode and execute
@@ -386,7 +387,7 @@ void hovm_run(horizon_vm_t *vm)
         ir = vm->ram[vm->registers[HO_PC]];
 
         // HALT = JMP PC
-        if (ir == 0x2A000F00)
+        if (ir == HOVM_HALT)
             return;
 
         // Execute instruction
@@ -411,7 +412,7 @@ void hovm_continue(horizon_vm_t *vm)
         ir = vm->ram[vm->registers[HO_PC]];
 
         // HALT = JMP PC
-        if (ir == 0x2A000F00)
+        if (ir == HOVM_HALT)
             return;
 
         // Execute instruction
@@ -467,7 +468,7 @@ const char *hovm_register_name(uint8_t reg)
 // destination, the resulting string is just the decimal representation of
 // the value of the word.
 // dest is assumed to be big enough
-void hovm_disassemble(char *dest, horizon_vm_t *vm, uint32_t address)
+void hovm_disassemble(char *dest, horizon_vm_t *vm, int32_t address)
 {
     uint32_t program_start = 0;
 
@@ -478,6 +479,11 @@ void hovm_disassemble(char *dest, horizon_vm_t *vm, uint32_t address)
     if (address == 0)
     {
         sprintf(dest, "JMP #0x%X", program_start);
+        return;
+    }
+    else if (address < 0 || address >= vm->program_size)
+    {
+        sprintf(dest, "-");
         return;
     }
     else if (address < program_start)

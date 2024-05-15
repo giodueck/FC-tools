@@ -48,6 +48,16 @@ enum fcgui_text_elignment {
 
 #define FCGUI_ORANGE (SDL_Color) { 0xE4, 0x6B, 0x00, 0xFF }
 
+// Running modes
+enum fcgui_running_mode {
+    FCGUI_START = -1,
+    FCGUI_BREAK,
+    FCGUI_STEP,
+    FCGUI_CONTINUE,
+    FCGUI_RUN,
+    FCGUI_RESET,
+};
+
 /* Global SDL variables */
 static SDL_Window *fcgui_window = NULL;
 static SDL_Renderer *fcgui_renderer = NULL;
@@ -61,9 +71,12 @@ const int fcgui_pixel_height = 1;
 const int fcgui_fps_limit = 60;
 const int fcgui_ptsize = 16;
 const SDL_Color fcgui_bgcolor = FCGUI_BLACK;
+const char *fcgui_title = "Factorio Computer Emulator";
 
 /* Global state variables */
 static int fcgui_ups = 0;
+static int fcgui_ff = 0;    // fast forward mode
+static int fcgui_mode = FCGUI_START;
 
 void fcgui_init()
 {
@@ -127,8 +140,7 @@ void fcgui_draw_text(const char *string, int x, int y, fcgui_font_options_t font
     TTF_SetFontStyle(fcgui_font, TTF_STYLE_NORMAL);
 }
 
-// Draw registers with their name, hex value and decimal equivalent.
-// Takes up around 300x300 pixels of space
+// Draw registers with their name, hex value and decimal equivalent. Also draw flag state
 void fcgui_draw_registers(horizon_vm_t *vm, int xoffset, int yoffset)
 {
     char buf[BUFSIZ] = { 0 };
@@ -176,6 +188,57 @@ void fcgui_draw_registers(horizon_vm_t *vm, int xoffset, int yoffset)
     sprintf(buf, "PC  = %08x = %d", vm->registers[HO_PC], vm->registers[HO_PC]);
     fcgui_draw_text(buf, xoffset, yoffset + 15 * fcgui_ptsize, font_options);
 
+    // Flags
+    yoffset += 17 * fcgui_ptsize;
+    sprintf(buf, "Flags");
+    font_options.fg = FCGUI_ORANGE;
+    font_options.style = TTF_STYLE_BOLD;
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    font_options.fg = FCGUI_LIGHT_GREY;
+    font_options.style = 0;
+
+    xoffset += 5 * fcgui_ptsize;
+    sprintf(buf, "Z");
+    if (vm->z)
+    {
+        font_options.fg = FCGUI_ORANGE;
+        font_options.style = TTF_STYLE_BOLD;
+    }
+    else
+    {
+        font_options.fg = FCGUI_GREY;
+        font_options.style = TTF_STYLE_NORMAL;
+    }
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    xoffset += 3 * fcgui_ptsize;
+
+    sprintf(buf, "N");
+    if (vm->n)
+    {
+        font_options.fg = FCGUI_ORANGE;
+        font_options.style = TTF_STYLE_BOLD;
+    }
+    else
+    {
+        font_options.fg = FCGUI_GREY;
+        font_options.style = TTF_STYLE_NORMAL;
+    }
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    xoffset += 3 * fcgui_ptsize;
+
+    sprintf(buf, "V");
+    if (vm->v)
+    {
+        font_options.fg = FCGUI_ORANGE;
+        font_options.style = TTF_STYLE_BOLD;
+    }
+    else
+    {
+        font_options.fg = FCGUI_GREY;
+        font_options.style = TTF_STYLE_NORMAL;
+    }
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    xoffset += 3 * fcgui_ptsize;
 }
 
 // Draw a section of RAM in hexadecimal. The section to draw is decided with
@@ -250,6 +313,49 @@ void fcgui_draw_stack(horizon_vm_t *vm, int xoffset, int yoffset, int depth)
     }
 }
 
+// Draw some program instructions: the one PC points to in the center,
+// then some instructiions preceding and some following it
+void fcgui_draw_program(horizon_vm_t *vm, int xoffset, int yoffset)
+{
+    char buf[BUFSIZ] = { 0 };
+    fcgui_font_options_t font_options = { .fg = FCGUI_LIGHT_GREY };
+    int instr_count = 8;
+
+    // Get PC
+    int pc = vm->registers[HO_PC];
+
+    // Header
+    sprintf(buf, "Program");
+    font_options.fg = FCGUI_ORANGE;
+    font_options.style = TTF_STYLE_BOLD;
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    yoffset += fcgui_ptsize * 1.5;
+    font_options.fg = FCGUI_LIGHT_GREY;
+    font_options.style = 0;
+
+    // preceding instructions
+    for (int i = instr_count; i > 0; i--)
+    {
+        hovm_disassemble(buf, vm, pc - i);
+        fcgui_draw_text(buf, xoffset, yoffset, font_options);
+        yoffset += fcgui_ptsize * 1.5;
+    }
+
+    hovm_disassemble(buf, vm, pc);
+    font_options.fg = FCGUI_ORANGE;
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    yoffset += fcgui_ptsize * 1.5;
+    font_options.fg = FCGUI_LIGHT_GREY;
+
+    // following instructions
+    for (int i = 1; i < instr_count; i++)
+    {
+        hovm_disassemble(buf, vm, pc + i);
+        fcgui_draw_text(buf, xoffset, yoffset, font_options);
+        yoffset += fcgui_ptsize * 1.5;
+    }
+}
+
 void fcgui_start(int arch, uint32_t *program, size_t program_size)
 {
     if (arch != ARCH_HORIZON)
@@ -280,7 +386,7 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
             fcgui_ups = ups_counter;
 
             char title_str[256];
-            SDL_snprintf(title_str, sizeof(title_str), "[%d UPS]", fcgui_ups);
+            SDL_snprintf(title_str, sizeof(title_str), "[%d UPS]\t%s", fcgui_ups, fcgui_title);
             SDL_SetWindowTitle(fcgui_window, title_str);
 
             ups_timer -= 1000;
@@ -302,6 +408,15 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
                     case SDLK_q:
                         quit = 1;
                         break;
+                    case SDLK_s:
+                        fcgui_mode = FCGUI_STEP;
+                        break;
+                    case SDLK_c:
+                        fcgui_mode = FCGUI_CONTINUE;
+                        break;
+                    case SDLK_r:
+                        fcgui_mode = FCGUI_RUN;
+                        break;
                     default:
                         break;
                 }
@@ -320,24 +435,50 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
         }
 
         /* Update */
-        hovm_step(&vm);
+        switch (fcgui_mode)
+        {
+            case FCGUI_START:
+                fcgui_mode = FCGUI_BREAK;
+                break;
+            case FCGUI_STEP:
+                hovm_step(&vm);
+                fcgui_mode = FCGUI_BREAK;
+                break;
+            case FCGUI_CONTINUE:
+                hovm_step(&vm);
+                if (vm.breakpoint_map[vm.registers[HO_PC]])
+                    fcgui_mode = FCGUI_BREAK;
+                break;
+            case FCGUI_RUN:
+                hovm_step(&vm);
+                if (vm.ram[vm.registers[HO_PC]] == HOVM_HALT)
+                    fcgui_mode = FCGUI_BREAK;
+                break;
+            case FCGUI_BREAK:
+            default:
+                continue;
+        }
 
         /* Drawing */
         // Clear
         SDL_SetRenderDrawColor(fcgui_renderer, fcgui_bgcolor.r, fcgui_bgcolor.g, fcgui_bgcolor.b, fcgui_bgcolor.a);
         SDL_RenderClear(fcgui_renderer);
 
-        // Registers
-        int xoffset = fcgui_width - 300, yoffset = 10;
+        // RAM
+        int xoffset = 20, yoffset = 10;
+        fcgui_draw_ram(&vm, xoffset, yoffset);
+
+        // Program
+        yoffset = 250;
+        fcgui_draw_program(&vm, xoffset, yoffset);
+
+        // Registers + flags
+        xoffset = fcgui_width - 300, yoffset = 10;
         fcgui_draw_registers(&vm, xoffset, yoffset);
 
         // Stack
-        yoffset = 300;
+        yoffset = 340;
         fcgui_draw_stack(&vm, xoffset, yoffset, 16);
-
-        // RAM
-        xoffset = 20, yoffset = 10;
-        fcgui_draw_ram(&vm, xoffset, yoffset);
 
         /* End drawing */
         SDL_RenderPresent(fcgui_renderer);
