@@ -4,6 +4,7 @@
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_hints.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "fcgui.h"
 #include "horizon/horizon_vm.h"
@@ -45,6 +46,8 @@ enum fcgui_text_elignment {
 #define FCGUI_DARK_CYAN    (SDL_Color) { 0x00, 0x80, 0x80, 0xFF }
 #define FCGUI_DARK_MAGENTA (SDL_Color) { 0x80, 0x00, 0x80, 0xFF }
 
+#define FCGUI_ORANGE (SDL_Color) { 0xE4, 0x6B, 0x00, 0xFF }
+
 /* Global SDL variables */
 static SDL_Window *fcgui_window = NULL;
 static SDL_Renderer *fcgui_renderer = NULL;
@@ -60,7 +63,7 @@ const int fcgui_ptsize = 16;
 const SDL_Color fcgui_bgcolor = FCGUI_BLACK;
 
 /* Global state variables */
-
+static int fcgui_ups = 0;
 
 void fcgui_init()
 {
@@ -105,6 +108,7 @@ void fcgui_draw_text(const char *string, int x, int y, fcgui_font_options_t font
     SDL_Surface *surface = NULL;
     SDL_Texture *texture = NULL;
 
+    TTF_SetFontStyle(fcgui_font, font_options.style);
     surface = TTF_RenderText_Solid(fcgui_font, string, font_options.fg);
     texture = SDL_CreateTextureFromSurface(fcgui_renderer, surface);
 
@@ -120,12 +124,24 @@ void fcgui_draw_text(const char *string, int x, int y, fcgui_font_options_t font
 
     SDL_FreeSurface(surface);
     SDL_DestroyTexture(texture);
+    TTF_SetFontStyle(fcgui_font, TTF_STYLE_NORMAL);
 }
 
+// Draw registers with their name, hex value and decimal equivalent.
+// Takes up around 300x300 pixels of space
 void fcgui_draw_registers(horizon_vm_t *vm, int xoffset, int yoffset)
 {
     char buf[BUFSIZ] = { 0 };
     fcgui_font_options_t font_options = { .fg = FCGUI_LIGHT_GREY };
+
+    // Header
+    sprintf(buf, "Registers");
+    font_options.fg = FCGUI_ORANGE;
+    font_options.style = TTF_STYLE_BOLD;
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    yoffset += fcgui_ptsize * 1.5;
+    font_options.fg = FCGUI_LIGHT_GREY;
+    font_options.style = 0;
 
     sprintf(buf, "R0  = %08x = %d", vm->registers[HO_R0], vm->registers[HO_R0]);
     fcgui_draw_text(buf, xoffset, yoffset, font_options);
@@ -162,11 +178,76 @@ void fcgui_draw_registers(horizon_vm_t *vm, int xoffset, int yoffset)
 
 }
 
+// Draw a section of RAM in hexadecimal. The section to draw is decided with
+// the address register (AR)
 void fcgui_draw_ram(horizon_vm_t *vm, int xoffset, int yoffset)
+{
+    char buf[BUFSIZ] = { 0 };
+    char catbuf[BUFSIZ] = { 0 };
+    fcgui_font_options_t font_options = { .fg = FCGUI_LIGHT_GREY };
+
+    // Get memory cell start of address AR points to
+    int cell = vm->registers[HO_AR] / HOVM_RAM_CELL_SIZE;
+
+    // Header
+    sprintf(buf, "RAM");
+    font_options.fg = FCGUI_ORANGE;
+    font_options.style = TTF_STYLE_BOLD;
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    yoffset += fcgui_ptsize * 1.5;
+    font_options.fg = FCGUI_LIGHT_GREY;
+    font_options.style = 0;
+
+    // Memory contents
+    for (int i = 0; i < 8; i++)
+    {
+        sprintf(buf, "%4x", cell * HOVM_RAM_CELL_SIZE + i * 8);
+        font_options.fg = FCGUI_GREY;
+        fcgui_draw_text(buf, xoffset, yoffset + i * (1.5 * fcgui_ptsize), font_options);
+        font_options.fg = FCGUI_LIGHT_GREY;
+
+        buf[0] = 0;
+        for (int j = 0; j < 8; j++)
+        {
+            sprintf(catbuf, "%08x  ", vm->ram[cell * HOVM_RAM_CELL_SIZE + i * 8 + j]);
+            strcat(buf, catbuf);
+        }
+
+        fcgui_draw_text(buf, xoffset + 50, yoffset + i * (1.5 * fcgui_ptsize), font_options);
+    }
+}
+
+// Draw the top of the stack, up to a maximum depth
+void fcgui_draw_stack(horizon_vm_t *vm, int xoffset, int yoffset, int depth)
 {
     char buf[BUFSIZ] = { 0 };
     fcgui_font_options_t font_options = { .fg = FCGUI_LIGHT_GREY };
 
+    // Get SP
+    int top = vm->registers[HO_SP] - 1;
+
+    // Header
+    sprintf(buf, "Stack");
+    font_options.fg = FCGUI_ORANGE;
+    font_options.style = TTF_STYLE_BOLD;
+    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    yoffset += fcgui_ptsize * 1.5;
+    font_options.fg = FCGUI_LIGHT_GREY;
+    font_options.style = 0;
+
+    // Draw top of stack
+    for (int i = 0; i < depth; i++)
+    {
+        if (top - i < 0 || top - i > HOVM_STACK_SIZE)
+        {
+            sprintf(buf, "--------");
+            fcgui_draw_text(buf, xoffset, yoffset + i * 1.5 * fcgui_ptsize, font_options);
+            continue;
+        }
+
+        sprintf(buf, "%08x  %d", vm->stack[top - i], vm->stack[top - i]);
+        fcgui_draw_text(buf, xoffset, yoffset + i * 1.5 * fcgui_ptsize, font_options);
+    }
 }
 
 void fcgui_start(int arch, uint32_t *program, size_t program_size)
@@ -175,7 +256,6 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
         return;
 
     horizon_vm_t vm = { 0 };
-    vm.registers[0] = 0x80000000;
 
     hovm_load_rom(&vm, program, program_size);
 
@@ -183,8 +263,30 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
 
     // Update loop
     uint8_t quit = 0;
+    uint64_t last_time = SDL_GetTicks64();
+    uint64_t ups_timer = 1000, ups_counter = 0;
     while (!quit)
     {
+        /* Time keeping */
+        // UPS counting
+        uint64_t new_time = SDL_GetTicks64();
+        uint64_t elapsed_time = new_time - last_time;
+        last_time = new_time;
+        ups_counter++;
+        ups_timer += elapsed_time;
+
+        if (ups_timer >= 1000)
+        {
+            fcgui_ups = ups_counter;
+
+            char title_str[256];
+            SDL_snprintf(title_str, sizeof(title_str), "[%d UPS]", fcgui_ups);
+            SDL_SetWindowTitle(fcgui_window, title_str);
+
+            ups_timer -= 1000;
+            ups_counter = 0;
+        }
+
         /* Input handling */
         SDL_Event e;
         while (SDL_PollEvent(&e))
@@ -220,7 +322,6 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
         /* Update */
         hovm_step(&vm);
 
-        /* Time keeping */
         /* Drawing */
         // Clear
         SDL_SetRenderDrawColor(fcgui_renderer, fcgui_bgcolor.r, fcgui_bgcolor.g, fcgui_bgcolor.b, fcgui_bgcolor.a);
@@ -230,8 +331,12 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
         int xoffset = fcgui_width - 300, yoffset = 10;
         fcgui_draw_registers(&vm, xoffset, yoffset);
 
+        // Stack
+        yoffset = 300;
+        fcgui_draw_stack(&vm, xoffset, yoffset, 16);
+
         // RAM
-        xoffset = 10, yoffset = 10;
+        xoffset = 20, yoffset = 10;
         fcgui_draw_ram(&vm, xoffset, yoffset);
 
         /* End drawing */
