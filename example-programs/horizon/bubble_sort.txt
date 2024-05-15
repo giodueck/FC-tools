@@ -16,6 +16,7 @@
 
 .start
 
+mov sp nil
 mov r1 nil  ; i
 mov r2 nil  ; j
 mov r6 len_list ; len_list - 1

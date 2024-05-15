@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_keyboard.h>
+#include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_ttf.h>
@@ -442,6 +443,12 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
                             fcgui_ff = 0;
                         break;
                     case SDLK_r:
+                        if (SDL_GetModState() & KMOD_CTRL)
+                        {
+                            fcgui_mode = FCGUI_RESET;
+                            fcgui_ff = 0;
+                            break;
+                        }
                         fcgui_mode = FCGUI_RUN;
                         if (SDL_GetModState() & KMOD_SHIFT)
                             fcgui_ff = 1;
@@ -469,6 +476,10 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
                 break;
             case FCGUI_RUN:
                 hovm_step(&vm);
+                break;
+            case FCGUI_RESET:
+                hovm_reset(&vm);
+                hovm_load_rom(&vm, program, program_size);
                 break;
             case FCGUI_BREAK:
             default:
