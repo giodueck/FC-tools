@@ -334,24 +334,43 @@ void fcgui_draw_program(horizon_vm_t *vm, int xoffset, int yoffset)
     font_options.style = 0;
 
     // preceding instructions
+    char addrbuf[BUFSIZ] = { 0 };
     for (int i = instr_count; i > 0; i--)
     {
+        if (pc - i >= 0)
+        {
+            sprintf(addrbuf, "%4x ", pc - i);
+            font_options.fg = FCGUI_GREY;
+            fcgui_draw_text(addrbuf, xoffset, yoffset, font_options);
+            font_options.fg = FCGUI_LIGHT_GREY;
+        }
+
         hovm_disassemble(buf, vm, pc - i);
-        fcgui_draw_text(buf, xoffset, yoffset, font_options);
+        fcgui_draw_text(buf, xoffset + 4 * fcgui_ptsize, yoffset, font_options);
         yoffset += fcgui_ptsize * 1.5;
     }
 
+    sprintf(addrbuf, "%4x ", pc);
+    font_options.fg = FCGUI_GREY;
+    fcgui_draw_text(addrbuf, xoffset, yoffset, font_options);
+    font_options.fg = FCGUI_LIGHT_GREY;
+
     hovm_disassemble(buf, vm, pc);
     font_options.fg = FCGUI_ORANGE;
-    fcgui_draw_text(buf, xoffset, yoffset, font_options);
+    fcgui_draw_text(buf, xoffset + 4 * fcgui_ptsize, yoffset, font_options);
     yoffset += fcgui_ptsize * 1.5;
     font_options.fg = FCGUI_LIGHT_GREY;
 
     // following instructions
     for (int i = 1; i < instr_count; i++)
     {
+        sprintf(addrbuf, "%4x ", pc + i);
+        font_options.fg = FCGUI_GREY;
+        fcgui_draw_text(addrbuf, xoffset, yoffset, font_options);
+        font_options.fg = FCGUI_LIGHT_GREY;
+
         hovm_disassemble(buf, vm, pc + i);
-        fcgui_draw_text(buf, xoffset, yoffset, font_options);
+        fcgui_draw_text(buf, xoffset + 4 * fcgui_ptsize, yoffset, font_options);
         yoffset += fcgui_ptsize * 1.5;
     }
 }
