@@ -428,6 +428,8 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
                         quit = 1;
                         break;
                     case SDLK_s:
+                    case SDLK_n:
+                    case SDLK_SPACE:
                         fcgui_mode = FCGUI_STEP;
                         break;
                     case SDLK_c:
@@ -465,18 +467,16 @@ void fcgui_start(int arch, uint32_t *program, size_t program_size)
                 break;
             case FCGUI_CONTINUE:
                 hovm_step(&vm);
-                if (vm.breakpoint_map[vm.registers[HO_PC]])
-                    fcgui_mode = FCGUI_BREAK;
                 break;
             case FCGUI_RUN:
                 hovm_step(&vm);
-                if (vm.ram[vm.registers[HO_PC]] == HOVM_HALT)
-                    fcgui_mode = FCGUI_BREAK;
                 break;
             case FCGUI_BREAK:
             default:
                 continue;
         }
+        if (vm.ram[vm.registers[HO_PC]] == HOVM_HALT || vm.breakpoint_map[vm.registers[HO_PC]])
+            fcgui_mode = FCGUI_BREAK;
 
         /* Drawing */
         // Clear

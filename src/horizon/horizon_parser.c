@@ -2187,7 +2187,7 @@ int ho_parse_instruction(horizon_program_t *program, char *buf)
 
             // On error break so the error message can be returned
             res = ho_parse_instruction(program, expanded);
-            if (res != NO_ERR)
+            if (res != NO_ERR && res != ERR_EOF)
                 break;
         }
 

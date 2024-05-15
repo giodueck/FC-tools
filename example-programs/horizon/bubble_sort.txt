@@ -1,0 +1,58 @@
+.name ; Bubble sort
+.desc ; Bubble sort an array on program memory
+
+.const len_list 10
+.array list [10] { 5, 4, 3, 9, 2, 6, 8, 1, 7, 0 }
+
+.macro swap 2
+. xor $1$ $2$
+. xor $2$ $1$
+. xor $1$ $2$
+
+; for i in range 1..len_list
+;  for j in range 0..len_list - i
+;   if list[j] > list[j+1]
+;    swap(list[j], list[j+1])
+
+.start
+
+mov r1 nil  ; i
+mov r2 nil  ; j
+mov r6 len_list ; len_list - 1
+dec r6
+mov r3 len_list ; len_list - 1 - i
+for_i:
+    ; load beginning of list
+    mov ar list
+    mov r2 nil
+    dec r3
+
+    for_j:
+        ; load two numbers
+        loadi r4
+        load r5
+
+        cmp r4 r5
+        jlt skip_swap
+            stored r4
+            storei r5
+
+        skip_swap:
+        inc r2
+        cmp r2 r3
+        jne for_j
+    inc r1
+    cmp r1 r6
+    jne for_i
+
+; to make the result more obvious
+mov ar list
+add ar len_list
+dec ar
+mov r1 len_list
+push_result:
+    loadd r0
+    push r0
+    decs r1
+    jne push_result
+halt
