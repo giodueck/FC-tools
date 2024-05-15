@@ -108,8 +108,17 @@ horizon_program_t *horizon_parse(FILE *fd, error_t *err_array, int err_array_siz
 
     // printf("Instructions:\n");
     char jmp_start_instr[HORIZON_IDENT_MAX_LEN + 1] = { 0 };
-    sprintf(jmp_start_instr, "JMP #%d\n", program.code_start + 1);
+    sprintf(jmp_start_instr, "JMP #%d\n", program.code_start + 1 + program.len_data);
     ho_parse_instruction(&program, jmp_start_instr);
+
+    program.len_code_space += program.len_data;
+    program.code = realloc(program.code, sizeof(int64_t) * program.len_code_space);
+
+    for (int i = 0; i < program.len_data; i++)
+    {
+        program.code[program.len_code] = program.data[i];
+        program.len_code++;
+    }
     for (int i = 0; i < program.len_code_lines; i++)
     {
         int res = ho_parse_instruction(&program, program.code_lines[i]);
