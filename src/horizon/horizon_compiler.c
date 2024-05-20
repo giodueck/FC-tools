@@ -165,6 +165,8 @@ void horizon_free(horizon_program_t *program)
         free(program->code_lines);
     if (program->code_line_indices)
         free(program->code_line_indices);
+    if (program->name)
+        free(program->name);
     if (program->desc)
         free(program->desc);
     if (program->code)

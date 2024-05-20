@@ -136,15 +136,6 @@ char *bp_replace(const char *bp_str_in, placeholder_index_func_t is_placeholder,
                     break;
             }
         }
-        // // placeholder
-        // int reswrite = fwrite(buf, 1, res, fd_json_out);
-        // if (reswrite == 0)
-        // {
-        //     perror("bp_replace fwrite");
-        //     fclose(fd_json_in);
-        //     fclose(fd_json_out);
-        //     return NULL;
-        // }
     }
     if (feof(fd_json_in))
     {
@@ -157,6 +148,134 @@ char *bp_replace(const char *bp_str_in, placeholder_index_func_t is_placeholder,
         fclose(fd_json_out);
         return NULL;
     }
+
+    // Compress json into a tmpfile
+    rewind(fd_json_out);
+    FILE *fd_def_out = tmpfile();
+    if (fd_def_out == NULL)
+    {
+        perror("bp_replace tmpfile");
+        fclose(fd_json_out);
+        return NULL;
+    }
+
+    res = def(fd_json_out, fd_def_out, 9);
+    if (res != Z_OK)
+    {
+        zerr(res);
+        fclose(fd_def_out);
+        fclose(fd_json_out);
+        return NULL;
+    }
+    fclose(fd_json_out);
+
+    // Encode compressed data into new BP string
+    fseek(fd_def_out, 0, SEEK_END);
+    long def_out_size = ftell(fd_def_out);
+    rewind(fd_def_out);
+
+    size_t bp_str_out_size = base64_encode_len(def_out_size);
+    bp_str_out = malloc(bp_str_out_size + 1);
+
+    char *buf_def_out = malloc(def_out_size + 2);
+    res = fread(buf_def_out, 1, def_out_size, fd_def_out);
+    fclose(fd_def_out);
+
+    base64_encode(bp_str_out + 1, buf_def_out, def_out_size);
+    bp_str_out[0] = '0';
+    free(buf_def_out);
+
+    return bp_str_out;
+}
+
+char *bp_set_name_desc(const char *bp_str_in, const char *placeholder_name, const char *new_name, const char *placeholder_desc, const char *new_desc)
+{
+    char *bp_str_out = NULL;
+    // The first char is ignored, that is the version number and always '0' for
+    // Factorio versions through 1.1
+    size_t b64_decoded_size = base64_decode_len(bp_str_in + 1, strlen(bp_str_in + 1));
+
+    // Decode input BP string
+    char *b64_decoded_data = malloc(b64_decoded_size);
+    int res = base64_decode(b64_decoded_data, bp_str_in + 1);
+    if (res != 0)
+    {
+        free(b64_decoded_data);
+        return NULL;
+    }
+
+    // Write to a tmpfile
+    FILE *fd_def_in = tmpfile();
+    if (fd_def_in == NULL)
+    {
+        perror("bp_replace tmpfile");
+        free(b64_decoded_data);
+        return NULL;
+    }
+
+    res = fwrite(b64_decoded_data, 1, b64_decoded_size, fd_def_in);
+    if (res != b64_decoded_size)
+    {
+        perror("bp_replace fwrite");
+        free(b64_decoded_data);
+        fclose(fd_def_in);
+        return NULL;
+    }
+    free(b64_decoded_data);
+
+    // Decompress decoded data into a tmpfile
+    rewind(fd_def_in);
+    FILE *fd_json_in = tmpfile();
+    if (fd_json_in == NULL)
+    {
+        perror("bp_replace tmpfile");
+        fclose(fd_def_in);
+        return NULL;
+    }
+
+    res = inf(fd_def_in, fd_json_in);
+    if (res != Z_OK)
+    {
+        zerr(res);
+        fclose(fd_json_in);
+        fclose(fd_def_in);
+        return NULL;
+    }
+    fclose(fd_def_in);
+
+    // Modify json and copy into a tmpfile
+    rewind(fd_json_in);
+    // make changes and write into new file
+    FILE *fd_json_out = tmpfile();
+    if (fd_json_out == NULL)
+    {
+        perror("bp_replace tmpfile");
+        fclose(fd_json_in);
+        return NULL;
+    }
+
+    // Get filesize
+    fseek(fd_json_in, 0, SEEK_END);
+    size_t fsize = ftell(fd_json_in);
+    char *buf = malloc(2 * fsize);
+    memset(buf, 0, 2 * fsize);
+
+    // Read in whole file
+    rewind(fd_json_in);
+    int c = 0;
+    int i = 0;
+    while ((c = fgetc(fd_json_in)) != EOF)
+        buf[i++] = c;
+    buf[i] = 0;
+
+    // Search and replace
+    if (new_desc) str_replace(buf, 2 * fsize, placeholder_desc, new_desc);
+    if (new_name) str_replace(buf, 2 * fsize, placeholder_name, new_name);
+
+    // Write out file
+    for (int i = 0; buf[i] != 0; i++)
+        fputc(buf[i], fd_json_out);
+    free(buf);
 
     // Compress json into a tmpfile
     rewind(fd_json_out);

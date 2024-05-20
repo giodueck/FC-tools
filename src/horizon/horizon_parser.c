@@ -1437,6 +1437,14 @@ int ho_parse_directive(horizon_program_t *program, int *lines_consumed, char **b
             if (res == ERR_NO_MATCH)
                 return ERR_EXPECTED_COMMENT;
             ho_match_whitespace(&program->name);
+            // Count name length and copy to new buffer
+            len = 0;
+            while (program->name[len] != '\n' && program->name[len] != 0)
+                len++;
+            char *namebuf = malloc(len + 1);
+            strncpy(namebuf, program->name, len);
+            namebuf[len] = 0;
+            program->name = namebuf;
             break;
         case HO_DESC:
             ho_match_whitespace(buf);

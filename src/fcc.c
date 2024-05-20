@@ -194,6 +194,7 @@ int main(int argc, char **argv)
                     code_array[i] = ho_program->code[i] & 0xFFFFFFFF;
 
                 char *bp_str = bp_replace(rom_11_bit, is_rom_11_placeholder, code_array, ho_program->len_code);
+                bp_str = bp_set_name_desc(bp_str, rom_11_name, ho_program->name, rom_11_desc, ho_program->desc);
 
                 fwrite(bp_str, 1, strlen(bp_str), fd);
                 free(code_array);
