@@ -183,7 +183,7 @@ of the value.
 ## Stack: 0x3
 Instruction formats: 4, 5
 
-The stack is 512 cells deep, and SP always points to the first empty address
+The stack is 2048 cells deep, and SP always points to the first empty address
 on the top of the stack.
 
 The stack is held in an independent block of memory inaccessible by load/store

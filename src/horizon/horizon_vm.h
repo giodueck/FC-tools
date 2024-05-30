@@ -5,10 +5,10 @@
 #include <stdio.h>
 
 #define HOVM_REGISTER_COUNT  255
-#define HOVM_RAM_SIZE       4096
+#define HOVM_RAM_SIZE       8192
 #define HOVM_RAM_CELL_SIZE    64
-#define HOVM_ROM_SIZE       2048
-#define HOVM_STACK_SIZE      512
+#define HOVM_ROM_SIZE       4096
+#define HOVM_STACK_SIZE     2048
 
 #define HOVM_HALT 0x2A000F00
 
