@@ -2,6 +2,7 @@
 
 - Circuit decoder, no mircocode
     Is slightly more complex, but much faster
+- Harvard architecture, for fast memory access
 - Many, useful registers
 - Simple, fast, RISC instructions
     Make memory instructions take multiple cycles. This makes instruction cycles shorter in exchange for longer operations taking more cycles.
@@ -20,27 +21,27 @@
 
 ### Hardwired zero
 Register x0 is always zero on read, and ignores writes.
-- zero: hardwired zero
+- ZERO: hardwired zero
 
 ### Functional registers
 Registers used for some purpose in the hardware
-- sp: stack pointer
-- ra: return address
-- pc: program counter
+- SP: stack pointer
+- RA: return address
+- PC: program counter
 
 ### Argument registers
 For passing arguments and returning results:
-- a0-1: function arguments/return values
-- a2-7: function arguments
+- A0-1: function arguments/return values
+- A2-7: function arguments
 
 ### I/O registers
 Communication to input and output registers, to interact with external devices.
 Data received and outputted is put into a queue.
 
-- rx: receive
-- rs: receive size
-- tx: transmit
-- cs: chip select
+- RX: receive
+- RS: receive size
+- TX: transmit
+- CS: chip select
 
 ### Temporary
 Registers dedicated to temporary use, with aliases in the assembly lang.
@@ -56,6 +57,10 @@ Registers which on return from a function hold the same value as before
 - 24 (23-0): instruction-specific
 
 ## Instructions
+
+### Noop
+
+Opcode 0, does nothing.
 
 ### Register operations
 Move registers/immediates, test registers, etc.
@@ -128,10 +133,10 @@ oooo oooo -ddd dd
 - 5 (22-18): source/destination register
 
 #### Immediate
-- 16 (15-0): immediate (unsigned 16-bit)
+- 16 (15-0): immediate address (unsigned 16-bit)
 
 #### Register
-- 5 (4-0): register
+- 5 (4-0): register address
 
 ### Stack access
 
@@ -151,6 +156,19 @@ oooo oooo fddd dd-- ---- ---- ---- ----
 
 #### Register
 - 5 (4-0): register
+
+### ROM to RAM copy
+
+Special mode of execution in which words read from ROM are transferred to RAM instead of interpreted as instructions.
+
+The instruction encodes the number of words following it to transfer to an address stored in a register. The address is incremented for each new word, such that the result is the same sequence of words in a contiguous array of RAM starting at the address specified by the register argument.
+
+A similar instruction does not exist for copying a single word to an address or a register, as the 2 cycles needed to complete it are not much faster than the 3 with basic arithmetic operations or 2 with cleverer arithmetic ops.
+
+oooo oooo -rrr rr-- iiii iiii iiii iiii
+
+- 5 (22-18): register (starting address)
+- 16 (15-0): number of words (unsigned 16-bit)
 
 ### Reserved
 Opcode 0xFF will be reserved for placeholders in ROM blueprints.
