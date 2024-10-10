@@ -4,15 +4,21 @@ Tools for compiling and running programs for my custom computer architectures.
 # Features
 This project will slowly be developed and made feature complete.
 Currently there exists:
-- Horizon
-    - [x] Parsing/compiling to internal/binary representation
-    - [x] Compiling to blueprint string
-    - [x] Executing compiled programs
-- Graphical emulator
+- Compiler
+    - Horizon
+        - [x] Parsing/compiling to binary representation
+        - [x] Compiling to blueprint string
+    - Ellipse
+        - [ ] Parsing/compiling to binary representation
+        - [ ] Compiling to blueprint string
+- Emulator
     - [x] Graphical program to run programs interactively
     - [x] Inspect register and RAM state
     - [x] Step by step debugging
-    - [ ] **WIP** Set breakpoints
+    - [ ] Set breakpoints
+    - Architecture support:
+        - [x] Horizon
+        - [ ] Ellipse
 
 # Building
 Dependencies:
@@ -24,13 +30,13 @@ and with debug symbols, while `make release` won't.
 
 # Execution
 ## Compilation
-To compile a Horizon program use `fcc`:
+To compile a program use `fcc`:
 ```shell
 $ ./fcc -h
 ```
 
 ## Emulation
-To run a Horizon program use `fcemu`:
+To run a program use `fcemu`:
 ```shell
 $ ./fcemu -h
 ```
