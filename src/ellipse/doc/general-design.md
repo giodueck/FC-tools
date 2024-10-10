@@ -45,11 +45,16 @@ Data received and outputted is put into a queue.
 
 ### Temporary
 Registers dedicated to temporary use, with aliases in the assembly lang.
-- t0-t7: temporaries
+- t0-t5: temporaries
 
 ### Saved registers
 Registers which on return from a function hold the same value as before
 - s0-7: saved register
+
+### Misc registers
+Registers with miscellaneous special functions
+- PRNG: pseudo-random number, generated each time it is read, set seed by writing
+- TICK: self-incrementing counter, increments every cycle
 
 ## Instruction format
 32 bits
@@ -65,9 +70,9 @@ Opcode 0, does nothing.
 ### Register operations
 Move registers/immediates, test registers, etc.
 
-oooo oooo fddd dd
-                 -- ---- ---- ---r rrrr
-                 ii iiii iiii iiii iiii
+oooo oooo fddd dd--
+                    ---- ---- ---r rrrr
+                    iiii iiii iiii iiii
 
 - 1 (23): flags updated
 - 5 (22-18): destination register
@@ -76,30 +81,25 @@ oooo oooo fddd dd
 - 5 (4-0): source register
 
 #### Immediate
-- 18 (17-0): immediate (signed 18-bit)
+- 16 (15-0): immediate (signed 16-bit)
 
 ### Arithmetic
 Arithmetic and bitwise operations.
 
 oooo oooo fddd dd
-                 ii iiii iiii jjjj jjjj
-                 -- ---r rrrr jjjj jjjj
-                 -- ---r rrrr ---s ssss
+                 -r rrrr iiii iiii iiii
+                 -r rrrr ---- ---s ssss
 
 - 1 (23): flags updated
 - 5 (22-18): destination register
 
-#### Imm-Imm
-- 10 (17-8): immediate 1 (signed 10-bit)
-- 8 (7-0): immediate 2 (signed 8-bit)
-
 #### Reg-Imm
-- 5 (12-8): register operand 1
-- 8 (7-0): immediate operand 2 (signed 8-bit)
+- 5 (16-12): register operand 1
+- 12 (11-0): immediate operand 2 (signed 12-bit)
 
 #### Reg-Reg
-- 5 (12-8): operand 1
-- 5 (4-0): operand 2
+- 5 (16-12): register operand 1
+- 5 (4-0): register operand 2
 
 ### Jumps and subroutines
 Jumps, branching and subroutine calls. Jumps just send the link to x0.
@@ -125,7 +125,7 @@ oooo oooo -sss ss
                  -- ---- ---- ---r rrrr
 
 Load:
-oooo oooo -ddd dd
+oooo oooo fddd dd
                  -- iiii iiii iiii iiii
                  -- ---- ---- ---r rrrr
 
@@ -142,7 +142,7 @@ oooo oooo -ddd dd
 
 Push:
 oooo oooo
-          ---- --ii iiii iiii iiii iiii
+          ---- ---- iiii iiii iiii iiii
           ---- ---- ---- ---- ---r rrrr
 
 Pop:
@@ -152,7 +152,7 @@ oooo oooo fddd dd-- ---- ---- ---- ----
 - 5 (22-18): destination register
 
 #### Immediate
-- 18 (17-0): immediate (signed 18-bit)
+- 16 (15-0): immediate (signed 16-bit)
 
 #### Register
 - 5 (4-0): register
@@ -163,7 +163,7 @@ Special mode of execution in which words read from ROM are transferred to RAM in
 
 The instruction encodes the number of words following it to transfer to an address stored in a register. The address is incremented for each new word, such that the result is the same sequence of words in a contiguous array of RAM starting at the address specified by the register argument.
 
-A similar instruction does not exist for copying a single word to an address or a register, as the 2 cycles needed to complete it are not much faster than the 3 with basic arithmetic operations or 2 with cleverer arithmetic ops.
+A similar instruction does not exist for copying a single word to a register, as the 2 cycles needed to complete it are not faster than the 2 with MOV and MOVH
 
 oooo oooo -rrr rr-- iiii iiii iiii iiii
 

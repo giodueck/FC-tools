@@ -3,6 +3,7 @@
 ## Register operations
 
 - mov
+- movh (like mov, but accepts only an immediate and stores it shifted left 16 bits)
 - test (mov into x0 with flags enabled)
 
 ## Arithmetic and Logic
@@ -71,13 +72,11 @@ Load a value from a memory address.
 - pop
 
 ## Misc
+### Noop
+
+- noop (instruction 0)
+
 ### ROM to RAM copy
 Copy arrays of values from program ROM to RAM.
 
 - ramcp
-
-### PRNG
-
-- noop (instruction 0)
-- prng (set register to pseudo-random value)
-- seed (seed PRNG)
