@@ -1,5 +1,5 @@
-#ifndef HOPRIZON_VM_H
-#define HOPRIZON_VM_H
+#ifndef HORIZON_VM_H
+#define HORIZON_VM_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -81,4 +81,4 @@ void hovm_step(horizon_vm_t *vm);
 // dest is assumed to be big enough
 void hovm_disassemble(char *dest, horizon_vm_t *vm, int32_t address);
 
-#endif // HOPRIZON_VM_H
+#endif // HORIZON_VM_H
