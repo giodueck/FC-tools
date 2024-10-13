@@ -25,9 +25,9 @@ Register x0 is always zero on read, and ignores writes.
 
 ### Functional registers
 Registers used for some purpose in the hardware
+- PC: program counter
 - SP: stack pointer
 - RA: return address
-- PC: program counter
 
 ### Argument registers
 For passing arguments and returning results:
@@ -65,7 +65,9 @@ Registers with miscellaneous special functions
 
 ### Noop
 
-Opcode 0, does nothing.
+Waste a cycle, do nothing.
+
+Mov ZERO to ZERO
 
 ### Register operations
 Move registers/immediates, test registers, etc.
@@ -104,11 +106,11 @@ oooo oooo fddd dd
 ### Jumps and subroutines
 Jumps, branching and subroutine calls. Jumps just send the link to x0.
 
-oooo oooo -ddd dd
+oooo oooo l--- --
                  -- iiii iiii iiii iiii
                  -- ---- ---- ---r rrrr
 
-- 5 (22-18): link register
+- 23 (23): link, store PC+1 in RA
 
 #### Immediate
 - 16 (15-0): immediate (unsigned 16-bit)
@@ -162,6 +164,8 @@ oooo oooo fddd dd-- ---- ---- ---- ----
 Special mode of execution in which words read from ROM are transferred to RAM instead of interpreted as instructions.
 
 The instruction encodes the number of words following it to transfer to an address stored in a register. The address is incremented for each new word, such that the result is the same sequence of words in a contiguous array of RAM starting at the address specified by the register argument.
+
+The address is stored in a special-purpose register, the original register is not incremented.
 
 A similar instruction does not exist for copying a single word to a register, as the 2 cycles needed to complete it are not faster than the 2 with MOV and MOVH
 

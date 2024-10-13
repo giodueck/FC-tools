@@ -46,10 +46,10 @@ Simple jumping instructions.
 - jvc (!V)
 - jmp (always)
 
-### Function calls
+#### Function calls
 Branch and link for control to return to the branching point, for subroutine calls. Return can be done by jmp RA.
 
-- call (stores PC+1 in RA)
+Any jump can be made into a call instruction.
 
 ## Memory access
 ### Store
@@ -74,7 +74,11 @@ Load a value from a memory address.
 ## Misc
 ### Noop
 
-- noop (instruction 0)
+- noop
+
+### Halt
+
+- halt (instruction 0)
 
 ### ROM to RAM copy
 Copy arrays of values from program ROM to RAM.

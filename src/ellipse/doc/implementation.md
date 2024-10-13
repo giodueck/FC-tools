@@ -3,9 +3,9 @@
 ## Opcodes
 
 (s) indicates that the instruction can be suffixed with 's' to update the flags
+(l) indicates that the instruction can be suffixed with 'l' to write a return address to RA
 
-0: noop: skip instruction, waste one cycle
-1: halt: halt clock
+0: halt: halt clock
 
 8: mov(s): mov reg
 9: movi(s): mov s16 imm
@@ -23,6 +23,7 @@
 24: and(s)
 25: or(s)
 26: xor(s)
+27: subn(2): subtract reg with reg and negate result
 
 32: addi(s): add reg with s12 imm, and so on
 33: subi(s)
@@ -35,32 +36,31 @@
 40: andi(s)
 41: ori(s)
 42: xori(s)
+43: subni(2): subtract reg with s12 and negate result
 
-48: jeq: jump to u16 imm if flags (Z)
-49: jne: jump to u16 imm if flags (!Z)
-50: jlt: jump to u16 imm if flags (N != V)
-51: jgt: jump to u16 imm if flags (!Z & N = V)
-52: jle: jump to u16 imm if flags (Z & N != V)
-53: jge: jump to u16 imm if flags (N = V)
-54: jng: jump to u16 imm if flags (N)
-55: jpz: jump to u16 imm if flags (!N)
-56: jvs: jump to u16 imm if flags (V)
-57: jvc: jump to u16 imm if flags (!V)
-58: jmp: jump to u16 imm
-59: call: jump to u16 imm and store PC+1 in RA
+48: jeq(l): jump to u16 imm if flags (Z)
+49: jne(l): jump to u16 imm if flags (!Z)
+50: jlt(l): jump to u16 imm if flags (N != V)
+51: jgt(l): jump to u16 imm if flags (!Z & N = V)
+52: jle(l): jump to u16 imm if flags (Z & N != V)
+53: jge(l): jump to u16 imm if flags (N = V)
+54: jng(l): jump to u16 imm if flags (N)
+55: jpz(l): jump to u16 imm if flags (!N)
+56: jvs(l): jump to u16 imm if flags (V)
+57: jvc(l): jump to u16 imm if flags (!V)
+58: jmp(l): jump to u16 imm
 
-64: jeqr: jump to reg if flags (Z)
-65: jner: jump to reg if flags (!Z)
-66: jltr: jump to reg if flags (N != V)
-67: jgtr: jump to reg if flags (!Z & N = V)
-68: jler: jump to reg if flags (Z & N != V)
-69: jger: jump to reg if flags (N = V)
-70: jngr: jump to reg if flags (N)
-71: jpzr: jump to reg if flags (!N)
-72: jvsr: jump to reg if flags (V)
-73: jvcr: jump to reg if flags (!V)
-74: jmpr: jump to reg
-75: callr: jump to reg and store PC+1 in RA
+64: jeqr(l): jump to reg if flags (Z)
+65: jner(l): jump to reg if flags (!Z)
+66: jltr(l): jump to reg if flags (N != V)
+67: jgtr(l): jump to reg if flags (!Z & N = V)
+68: jler(l): jump to reg if flags (Z & N != V)
+69: jger(l): jump to reg if flags (N = V)
+70: jngr(l): jump to reg if flags (N)
+71: jpzr(l): jump to reg if flags (!N)
+72: jvsr(l): jump to reg if flags (V)
+73: jvcr(l): jump to reg if flags (!V)
+74: jmpr(l): jump to reg
 
 80: storer: store reg to reg address
 81: storei: store red to u16 imm address
@@ -76,4 +76,4 @@
 89: pushi: push s16 imm to stack
 90: pop(s): pop from stack into reg
 
-96: ramcp: copy u16 imm number of words into reg address, incrementing reg and PC
+96: ramcp: copy u16 imm number of words into RAM block starting at reg address
