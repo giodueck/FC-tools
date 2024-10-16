@@ -13,11 +13,11 @@ enum ellipse_register {
     // IO Receive
     EL_RX,
     // IO Receive Size
-    EL_RS,
+    EL_RC,
     // IO Transmit
     EL_TX,
-    // IO Chip Select
-    EL_CS,
+    // IO Transmit Size
+    EL_TC,
     // GP argument/return registers
     EL_A0,
     EL_A1,
@@ -113,6 +113,9 @@ enum ellipse_opcode {
     EL_PUSHI    = 89,
     EL_POP      = 90,
     EL_RAMCP    = 96,
+    EL_POPRX    = 97,
+    EL_POPTX    = 98,
+    EL_FLUSHTX  = 99,
 };
 
 #endif // ELLIPSE_H

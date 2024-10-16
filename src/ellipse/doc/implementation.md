@@ -77,3 +77,6 @@
 90: pop(s): pop from stack into reg
 
 96: ramcp: copy u16 imm number of words into RAM block starting at reg address
+97: poprx: pop the top element from the receive stack
+98: poptx: pop the top element from the transmit input stack
+99: flushtx: flush the transmit input stack to the output

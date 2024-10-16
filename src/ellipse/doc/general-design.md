@@ -38,10 +38,10 @@ For passing arguments and returning results:
 Communication to input and output registers, to interact with external devices.
 Data received and outputted is put into a queue.
 
-- RX: receive
-- RS: receive size
-- TX: transmit
-- CS: chip select
+- RX: receive: read received word
+- RC: receive count: how many words are in the receive queue
+- TX: transmit: add word to transmit queue
+- TC: transmit count: how many words are in the transmit queue to be read by the receiver
 
 ### Temporary
 Registers dedicated to temporary use, with aliases in the assembly lang.
@@ -184,3 +184,22 @@ Memory access, with my current designs, takes a long time compared to other oper
 2. Load value into register
 
 For store, the second step could be ommitted
+
+### Rx/Tx
+Special registers allow sending and receiving data through registers to peripherals.
+
+A double stack is used to simulate a queue:
+- A receiver stack accepts input data
+- An output stack offers output data
+- An instruction to flush to output clears the output stack and pushes the reversed input stack
+
+Special register RX is read-only, writing has no effect. Reads produce the top element from the queue without popping, or zero if the queue is empty.
+
+Special register TX is write-only, reading produces a zero. Writes push data onto the input stack of the Tx queue, and if the maximum capacity is reached, further writes are discarded.
+
+Flushing the Tx input to output or popping from the Tx or Tx stack is done through instructions. While a stack is being flushed from input to output, any operations to RX and TX are discarded.
+
+Flushing the Rx input stack so that the data is readable from RX is the job of the peripheral. The amount of data in each stack can be read from RC and TC, for received words yet to pop and pushed words yet to transmit.
+
+Poprx, Poptx, Flushtx:
+oooo oooo ---- ---- ---- ---- ---- ----

@@ -10,15 +10,19 @@
 #define ELVM_ROM_SIZE       4096
 #define ELVM_STACK_SIZE     2048
 
-#define ELVM_HALT 0x00000001
+#define ELVM_MODE_NORMAL 0
+#define ELVM_MODE_RAMCP  1
 
 typedef struct {
     uint32_t rev;
     uint32_t registers[ELVM_REGISTER_COUNT];
     uint8_t z, n, v;
+    uint8_t mode;
     uint32_t ram[ELVM_RAM_SIZE];
     uint32_t stack[ELVM_STACK_SIZE];
     uint32_t cycles;
+
+    uint8_t post_prng, post_mode_ramcp, post_mode_normal;
 
     // 1 if the corresponding code should break execution
     // 0 if not
@@ -26,54 +30,6 @@ typedef struct {
     // Set on ROM load, for dissassembly
     uint32_t program_size;
 } ellipse_vm_t;
-
-enum ellipse_vm_register {
-    // Hardwired zero
-    EL_ZERO,
-    // Stack Pointer
-    EL_SP,
-    // Return Address
-    EL_RA,
-    // Program Counter
-    EL_PC,
-    // IO Receive
-    EL_RX,
-    // IO Receive Size
-    EL_RS,
-    // IO Transmit
-    EL_TX,
-    // IO Chip Select
-    EL_CS,
-    // GP argument/return registers
-    EL_A0,
-    EL_A1,
-    EL_A2,
-    EL_A3,
-    EL_A4,
-    EL_A5,
-    EL_A6,
-    EL_A7,
-    // GP saved registers
-    EL_S0,
-    EL_S1,
-    EL_S2,
-    EL_S3,
-    EL_S4,
-    EL_S5,
-    EL_S6,
-    EL_S7,
-    // GP temporary registers
-    EL_T0,
-    EL_T1,
-    EL_T2,
-    EL_T3,
-    EL_T4,
-    EL_T5,
-    // PRNG seed and next value
-    EL_PRNG,
-    // GP Ticker
-    EL_TICK
-};
 
 // Copy program into the first addresses in the VM's ROM
 // Returns number of words written
