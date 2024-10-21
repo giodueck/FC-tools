@@ -73,7 +73,7 @@ Mov ZERO to ZERO
 Move registers/immediates, test registers, etc.
 
 oooo oooo fddd dd--
-                    ---- ---- ---r rrrr
+                    ---- ---- ---s ssss
                     iiii iiii iiii iiii
 
 - 1 (23): flags updated
@@ -88,12 +88,13 @@ oooo oooo fddd dd--
 ### Arithmetic
 Arithmetic and bitwise operations.
 
-oooo oooo fddd dd
-                 -r rrrr iiii iiii iiii
-                 -r rrrr ---- ---s ssss
+oooo oooo fddd dda
+                  r rrrr iiii iiii iiii
+                  r rrrr ---- ---s ssss
 
 - 1 (23): flags updated
 - 5 (22-18): destination register
+- 1 (17): operands reversed
 
 #### Reg-Imm
 - 5 (16-12): register operand 1

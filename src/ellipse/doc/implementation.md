@@ -23,7 +23,6 @@
 24: and(s)
 25: or(s)
 26: xor(s)
-27: subn(2): subtract reg with reg and negate result
 
 32: addi(s): add reg with s12 imm, and so on
 33: subi(s)
@@ -36,7 +35,6 @@
 40: andi(s)
 41: ori(s)
 42: xori(s)
-43: subni(2): subtract reg with s12 and negate result
 
 48: jeq(l): jump to u16 imm if flags (Z)
 49: jne(l): jump to u16 imm if flags (!Z)
@@ -80,3 +78,42 @@
 97: poprx: pop the top element from the receive stack
 98: poptx: pop the top element from the transmit input stack
 99: flushtx: flush the transmit input stack to the output
+
+## Control signals
+M = instruction word
+
+(M >> 24) &   255 = O opcode
+(M >> 23) &     1 = F flags/link
+(M >> 18) &    31 = D dest reg
+(M >> 12) &    31 = T op1 reg
+(M >> 0)  &    31 = S op2 reg
+(M >> 0)  & 65535 = U u16
+(M >> 0)  &  4095 = V u12
+(M << 16) >>   16 = I s16
+(M << 20) >>   20 = J s12
+(M >> 17) &     1 = G switch operands
+
+L = load upper HW from bus A to result
+H = load lower HW from bus A to result
+E = load immediate as A instead of B
+
+### Signals per opcode
+Results:
+- R = result register
+- A = register to load at A
+- B = register to load at B
+- I/J/U/V = immediate to load as A/B
+- F = activate flags
+- L = activate linking
+- O = ALU operation
+- C = conditional operation
+- X = pass A to R
+- Y = pass B to R
+- Z = pass A & -65536 to R
+- W = pass B & 65535 to R
+
+MOV: D->R, F->F
+8: S->A, X
+9: I->I, X
+10: U->U, Z
+11: I->I, W
