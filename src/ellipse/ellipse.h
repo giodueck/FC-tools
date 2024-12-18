@@ -6,10 +6,10 @@ enum ellipse_register {
     EL_ZERO,
     // Program Counter
     EL_PC,
-    // Stack Pointer
-    EL_SP,
     // Return Address
     EL_RA,
+    // Stack Pointer
+    EL_SP,
     // IO Receive
     EL_RX,
     // IO Receive Size

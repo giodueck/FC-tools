@@ -93,8 +93,8 @@ M = instruction word
 (M << 20) >>   20 = J s12
 (M >> 17) &     1 = G switch operands
 
-L = load upper HW from bus A to result
-H = load lower HW from bus A to result
+H = load upper HW from bus A to result
+L = load lower HW from bus A to result
 E = load immediate as A instead of B
 
 ### Signals per opcode

@@ -26,13 +26,12 @@ Register x0 is always zero on read, and ignores writes.
 ### Functional registers
 Registers used for some purpose in the hardware
 - PC: program counter
-- SP: stack pointer
 - RA: return address
+- SP: stack pointer
 
 ### Argument registers
 For passing arguments and returning results:
-- A0-1: function arguments/return values
-- A2-7: function arguments
+- A0-7: function arguments/return values
 
 ### I/O registers
 Communication to input and output registers, to interact with external devices.
