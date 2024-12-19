@@ -111,6 +111,7 @@ Results:
 - Y = pass B to R
 - Z = pass A & -65536 to R
 - W = pass B & 65535 to R
+- S = save result into register
 
 MOV: D->R, F->F
 8: S->A, X

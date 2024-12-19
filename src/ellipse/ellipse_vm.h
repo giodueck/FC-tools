@@ -8,7 +8,7 @@
 #define ELVM_RAM_SIZE       8192
 #define ELVM_RAM_CELL_SIZE    64
 #define ELVM_ROM_SIZE       4096
-#define ELVM_STACK_SIZE     2048
+#define ELVM_STACK_SIZE      512
 
 #define ELVM_MODE_NORMAL 0
 #define ELVM_MODE_RAMCP  1
