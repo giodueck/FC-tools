@@ -9,8 +9,8 @@
 
 8: mov(s): mov reg
 9: movi(s): mov s16 imm
-10: movl(s): mov u16 imm, or with MS half-word currently in register
-11: movh(s): mov s16 imm lsh 16, or with LS half-word currently in register
+<!-- 10: movl(s): mov u16 imm or MS half-word currently in register -->
+<!-- 11: movh(s): mov s16 imm lsh 16 or LS half-word currently in register -->
 
 16: add(s): add reg with reg, and so on
 17: sub(s)
@@ -83,10 +83,11 @@
 M = instruction word
 
 (M >> 24) &   255 = O opcode
+(M >> 24) &    15 = D sub-opcode
 (M >> 23) &     1 = F flags/link
-(M >> 18) &    31 = D dest reg
-(M >> 12) &    31 = T op1 reg
-(M >> 0)  &    31 = S op2 reg
+(M >> 18) &    31 = R dest reg
+(M >> 12) &    31 = A op1 reg
+(M >> 0)  &    31 = B op2 reg
 (M >> 0)  & 65535 = U u16
 (M >> 0)  &  4095 = V u12
 (M << 16) >>   16 = I s16
@@ -103,18 +104,20 @@ Results:
 - A = register to load at A
 - B = register to load at B
 - I/J/U/V = immediate to load as A/B
-- F = activate flags
-- L = activate linking
-- O = ALU operation
+- F = activate flags/linking
+- L = ALU operation
 - C = conditional operation
 - X = pass A to R
 - Y = pass B to R
-- Z = pass A & -65536 to R
-- W = pass B & 65535 to R
-- S = save result into register
+<!-- - Z = pass A & -65536 to R -->
+<!-- - W = pass A & 65535 to R -->
 
-MOV: D->R, F->F
-8: S->A, X
+MOV: R->R, F->F
+8: A->A, X
 9: I->I, X
-10: U->U, Z
-11: I->I, W
+<!-- 10: U->U, Z -->
+<!-- 11: I->I, W -->
+
+Arithmetic
+Reg-reg: D->D, R->R, F->F, A->A, B->B, G->G
+Reg-imm: D->D, R->R, F->F, J->J, B->B, G->G
