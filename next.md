@@ -183,20 +183,22 @@ Memory: (format 2)
 4. Storei
 5. Loadd
 6. Stored
-7. Load signed imm16
-8. Load signed imm16 into upper bits (31:16)
+7. Load signed imm16 into upper halfword (31:16)
 
-Opcodes: 16-23, 0x10-0x17
+> [!Note] The memory address is always operand 2, meaning an immediate or the S register for format 0. The source/destination register is the D register.
+
+Opcodes: 16-22, 0x10-0x16
 
 PPU: (format TBD)
 Opcodes: 24-27, 0x18-0x1b
 
 Branch: (format 2 or 3)
-1. Branch: register address if format 2, immediate if format 3
+1. Branch: register address if format <= 2, immediate if format 3
 
 > [!Note] All writes to PC constitute a branch
 > What this instruction does is add an offset to the PC, instead of adding 1 at the end of the cycle.
-> If the F flag is set, store PC+1 in LR.
+> Writes to PC take an additional cycle for the register to be written, which means this instruction is 2 cycles faster, since the offset is added at the execute stage. It avoids waiting one extra cycle, which then also avoids needing to flush the pipeline one cycle longer.
+> If the F flag is set, store PC+1 in LR. This is done in the writeback cycle, while the pipeline is still flushing, so no performance penalty here.
 
 Opcodes: 28, 0x1c
 
@@ -286,15 +288,16 @@ Load data into RAM and VRAM (sprites) the same way Horizon loaded its entire pro
   - [x] decode
   - [x] read registers
   - [x] ex: execute
-  - [ ] ex: memory access
+  - [x] ex: memory access
   - [x] writeback
-    - [ ] writeback secondary
+    - [x] writeback secondary
 - Instructions
   - [x] alu
   - [x] conditional execution
-  - [ ] branching
-    - [ ] linking
-  - [ ] load/store
+  - [x] branching
+    - [x] linking
+  - [x] load/store
+    - [x] post inc/dec
   - [ ] control
     - [ ] set flags
     - [ ] break

@@ -1,0 +1,29 @@
+; Branch flush test: x1 should increment 1..5, then stay at 5 for 3 cycles while the pipeline
+; fills back up and restart
+mov x1 1    00 01 10 40
+mov x1 2    00 02 10 40
+mov x1 3    00 03 10 40
+mov x1 4    00 04 10 40
+mov x1 5    00 05 10 40
+jmp -5      ff ff 8e 60 (offset = -5 + -3 (prefetch PC))
+mov x1 6    00 06 10 40
+mov x1 7    00 07 10 40
+mov x1 8    00 08 10 40
+mov x1 9    00 09 10 40
+mov x1 10   00 0a 10 40
+
+; Branch flush test with mov pc
+mov x1 1    00 01 10 40
+mov x1 2    00 02 10 40
+mov x1 3    00 03 10 40
+mov x1 4    00 04 10 40
+mov x1 5    00 05 10 40
+mov pc 0    00 00 f0 40
+mov x1 6    00 06 10 40
+mov x1 7    00 07 10 40
+mov x1 8    00 08 10 40
+mov x1 9    00 09 10 40
+mov x1 10   00 0a 10 40
+
+ldr x1 0x2000   20 00 18 40
+ldri x1 x4      00 40 19 00
