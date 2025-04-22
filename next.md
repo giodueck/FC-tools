@@ -11,6 +11,7 @@ Name TBD
 - Small memory space for faster and more compact designs
 - Rom+Ram Harvard architecture
 - Short cycles: target 3-4 ticks. Maybe introduce stalls for certain instructions only
+  - *Post implementation*: actually 6 ticks
 
 # Stage sketches
 Clock pulses one signal on stage start and once in the middle of the stage for the decode stage.
@@ -230,13 +231,14 @@ A fast RAM is available in the TechnicalFactorio subreddit, a fast compact ROM c
 Additionally keep address space small to keep addresses small, within 16-bits or 64KB.
 
 ## Memory map
-Program ROM (separate space): 4K?
+16K R/O space + 16K R/W space, including I/O and display ranges. This gives 32K addresses, which is addressable with 15 bits, or a format 2 immediate16 without going negative.
 
-Data ROM: 4K
-RAM: 16K
-
-Sprite ROM: 8K
-GPIO: 1K
+- Program ROM (separate space): 4K
+- Data ROM: 4K (TODO)
+- Unused ROM: 8K
+- RAM: 8K
+- GPIO: 1K
+- VRAM: size of framebuffer, probably read-only for load/store and writable through PPU
 
 # Add-ons
 ## I/O
@@ -280,7 +282,7 @@ Consider using rgb565 in instructions and convert to rgb888 in transit to PPU, a
 4. Draw pixel at x,y: same color definition as 1.
 
 ### Load data
-Load data into RAM and VRAM (sprites) the same way Horizon loaded its entire program, or make part of the memory space read-only and paste the program ROM on top of it, which wohld be simpler.
+Load data into RAM and VRAM (sprites) the same way Horizon loaded its entire program, or make part of the memory space read-only and paste the program ROM on top of it, which would be simpler.
 
 # TODO
 - Pipeline stages
@@ -307,3 +309,11 @@ Load data into RAM and VRAM (sprites) the same way Horizon loaded its entire pro
   - [x] general purpose (includes sp, lr)
   - [x] pc
   - [ ] timers
+- Add-ons
+  - [ ] I/O
+    - [ ] Player movement
+    - [ ] Text input
+  - [ ] Display
+    - [ ] PPU
+      - [ ] State register
+      - [ ] Instruction dispatch
