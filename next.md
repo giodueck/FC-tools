@@ -1,6 +1,8 @@
-Name TBD
-- Eclipse
-- Atlantis
+Name:
+- [ ] Eclipse
+- [ ] Atlantis
+- [x] Punch
+  - ARM and RISC-V inspired design, has to be fast to be good.
 
 # Core ideas
 - Pipelined design:
@@ -70,7 +72,7 @@ Special purpose:
 - x15: PC: will always be a few instructions ahead of the currently executed one, due to the fetch stage
 - x14: LR
 - x13: SP
-- x11, x12: timers, tick down at 60 per second until reaching 0
+- x11, x12: T1, T2: timers, tick down at 60 per second until reaching 0
 
 General purpose:
 - x1-x4: argument/volatile registers
@@ -95,9 +97,7 @@ If it is not possible/slow, translate into separate instruction on compilation:
 - stri/ldri: ldr/str, addi/subi 1
 - bl: subi lr pc 1, b
 
-#### Brainstorming
-Register write with:
-- If W (color) = xN => Save M (color)
+*Post implementation*: it is possible but differently. Since the registers are 1-tick write, we can write two registers in 2 ticks, This is fine since we have 6 ticks per stage and 3 ticks between rising and falling edges.
 
 # ISA
 All instructions should have a very similar schema for getting operators and destinations to simplify and thus accelerate decoding.
@@ -204,11 +204,11 @@ Branch: (format 2 or 3)
 Opcodes: 28, 0x1c
 
 Control:
-1. Set flags: bits `znve`
+1. Set flags: LS bits of operand 2 (S register or immediate): `znve`
 2. Break: stop the clock until manual action is taken
-3. Wait: stop the clock until the given register hits 0. If a counter is given, wait until it ticks down, if not and the register is not 0, wait indefinitely
+  - Variation: Wait: stop the clock until the given timer register hits 0. A counter is given in the E bits of format 0: 1 and 2 select x11 and x12, 0 and all other values identical to break.
 
-Opcodes: 29-31, 0x1d-0x1f
+Opcodes: 29-30, 0x1d-0x1e
 
 > [!Note] Since some encodings remain unused due to the format requirements, the same opcodes may be repurposed with other format bits for other instructions.
 
@@ -300,15 +300,15 @@ Load data into RAM and VRAM (sprites) the same way Horizon loaded its entire pro
     - [x] linking
   - [x] load/store
     - [x] post inc/dec
-  - [ ] control
-    - [ ] set flags
-    - [ ] break
-    - [ ] wait
+  - control
+    - [x] set flags
+    - [x] break
+    - [x] wait
 - Registers
   - [x] zero
   - [x] general purpose (includes sp, lr)
   - [x] pc
-  - [ ] timers
+  - [x] timers
 - Add-ons
   - [ ] I/O
     - [ ] Player movement
